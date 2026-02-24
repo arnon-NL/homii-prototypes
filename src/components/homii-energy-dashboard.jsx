@@ -1,4 +1,4 @@
-import React, { useState, useMemo, Fragment, createContext, useContext } from "react";
+import React, { useState, useMemo, Fragment } from "react";
 import {
   BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, ReferenceLine, Area, ComposedChart, Cell,
@@ -6,229 +6,13 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-/* ═══════════════════════════════════════════════════════
-   DESIGN TOKENS — 4px grid, intentional palette
-   ═══════════════════════════════════════════════════════ */
-const brand = {
-  navy:    "#1F2A44",
-  blue:    "#3EB1C8",
-  midBlue: "#3B8EA5",
-  green:   "#22C55E",
-  red:     "#EF4444",
-  amber:   "#F59E0B",
-  bg:      "#F8FAFC",   // slate-50
-  surface: "#FFFFFF",
-  border:  "#E2E8F0",   // slate-200
-  muted:   "#94A3B8",   // slate-400
-  text:    "#1E293B",   // slate-800
-  subtle:  "#64748B",   // slate-500
-};
-
-const yearColor = {
-  2021: "#CBD5E1", 2022: "#94A3B8", 2023: "#3B8EA5", 2024: "#3EB1C8", 2025: "#1F2A44",
-};
+import { brand, yearColor, HOFOR, Icon } from "@/lib/brand";
+import { useLang, t, MS, ML } from "@/lib/i18n";
 
 /* ═══════════════════════════════════════════════════════
-   HOFOR 2026 Tariff Constants
-   ═══════════════════════════════════════════════════════ */
-const HOFOR = {
-  standard:  { krav: 30, bonusAbove: 35, surchargeBelow: 25, label: "Standard" },
-  vesterbro: { krav: 25, bonusAbove: 30, surchargeBelow: 20, label: "Vesterbro (lavtemp.)" },
-  korrektionPct: 0.008,
-  energiprisPerMWh: 650,
-  effektbetalingPerM2: 42,
-};
-
-/* ═══════════════════════════════════════════════════════
-   i18n
-   ═══════════════════════════════════════════════════════ */
-const LangCtx = createContext("da");
-const useLang = () => useContext(LangCtx);
-
-const dict = {
-  energyDashboard:    { da: "Energi Dashboard",           en: "Energy Dashboard" },
-  dept:               { da: "Afdeling: KAB Ørestad",      en: "Department: KAB Ørestad" },
-  tabCooling:         { da: "Afkøling",                   en: "Cooling" },
-  tabGraddage:        { da: "Graddage",                   en: "Degree Days" },
-  tabLegionella:      { da: "Legionella",                 en: "Legionella" },
-  tabConsumption:     { da: "Forbrug",                    en: "Consumption" },
-  showYears:          { da: "Vis år:",                     en: "Show years:" },
-  month:              { da: "Måned",                       en: "Month" },
-  total:              { da: "Total",                       en: "Total" },
-  normalYear:         { da: "Normalår",                    en: "Normal year" },
-  weekly:             { da: "Ugentlig",                    en: "Weekly" },
-  monthly:            { da: "Månedlig",                    en: "Monthly" },
-  yearly:             { da: "Årlig",                       en: "Yearly" },
-  yearlyTotal:        { da: "Årlig total",                 en: "Yearly total" },
-  coolingTitle:       { da: "Afkøling – Fjernvarme",      en: "Cooling – District Heating" },
-  coolingSub:         { da: "Overvåg afkøling per måler eller samlet. Afkøling = MWh/m³ × 860. Gode værdier reducerer HOFORs motivationstarif.",
-                        en: "Monitor cooling per meter or aggregated. Cooling = MWh/m³ × 860. Good values reduce HOFOR's motivational tariff." },
-  avgCooling:         { da: "Gns. Afkøling",              en: "Avg. Cooling" },
-  avgReturn:          { da: "Gns. Returtemp.",             en: "Avg. Return Temp." },
-  totalCons:          { da: "Samlet Energiforbrug",        en: "Total Energy Cons." },
-  status:             { da: "Status",                      en: "Status" },
-  aboveReq:           { da: "Over krav",                   en: "Above requirement" },
-  belowReq:           { da: "Under krav",                  en: "Below requirement" },
-  goodReturn:         { da: "God retur",                   en: "Good return" },
-  canImprove:         { da: "Kan forbedres",               en: "Can be improved" },
-  bonus:              { da: "Bonus",                       en: "Bonus" },
-  surcharge:          { da: "Tillæg",                      en: "Surcharge" },
-  expectedBonus:      { da: "Forventet bonus",             en: "Expected bonus" },
-  riskSurcharge:      { da: "Risiko for tillæg",           en: "Risk of surcharge" },
-  chartTitle:         { da: "Fremløb, Retur & Afkøling",  en: "Supply, Return & Cooling" },
-  req:                { da: "Krav",                        en: "Req." },
-  supplyLine:         { da: "Fremløb (°C)",                en: "Supply (°C)" },
-  returnLine:         { da: "Retur (°C)",                  en: "Return (°C)" },
-  coolingLine:        { da: "Afkøling (°C)",               en: "Cooling (°C)" },
-  coolingArea:        { da: "Afkøling (område)",           en: "Cooling (area)" },
-  energyCons:         { da: "Energiforbrug (MWh)",         en: "Energy Consumption (MWh)" },
-  consBar:            { da: "Energiforbrug (MWh)",         en: "Energy Consumption (MWh)" },
-  coolingTable:       { da: "Afkølingsdata",               en: "Cooling Data" },
-  period:             { da: "Periode",                     en: "Period" },
-  supply:             { da: "Fremløb (°C)",                en: "Supply (°C)" },
-  returnT:            { da: "Retur (°C)",                  en: "Return (°C)" },
-  coolingC:           { da: "Afkøling (°C)",               en: "Cooling (°C)" },
-  volume:             { da: "Volumen (m³)",                en: "Volume (m³)" },
-  consCol:            { da: "Energiforbrug (MWh)",         en: "Energy Cons. (MWh)" },
-  allMeters:          { da: "Alle målere (samlet)",        en: "All meters (aggregated)" },
-  blockA:             { da: "Blok A – Måler 001",          en: "Block A – Meter 001" },
-  blockB:             { da: "Blok B – Måler 002",          en: "Block B – Meter 002" },
-  blockC:             { da: "Blok C – Måler 003",          en: "Block C – Meter 003" },
-  blockD:             { da: "Blok D – Måler 004",          en: "Block D – Meter 004" },
-  graddageTitle:      { da: "Graddage – GUF & GAF",       en: "Degree Days – GUF & GAF" },
-  graddageSub:        { da: "Sammenlign graddagekorrigeret forbrug (GAF) over flere år. GUF = Normalårs-graddage / Aktuelle graddage. GAF = Forbrug × GUF.",
-                        en: "Compare degree-day-adjusted consumption (GAF) across years. GUF = Normal-year degree days ÷ Actual degree days. GAF = Consumption × GUF." },
-  gafMonthly:         { da: "GAF – Månedlig sammenligning", en: "GAF – Monthly Comparison" },
-  gafYearly:          { da: "Årligt GAF-forbrug",          en: "Yearly GAF Consumption" },
-  ddVsNormal:         { da: "Graddage – Aktuel vs. Normalår", en: "Degree Days – Actual vs. Normal Year" },
-  ddTable:            { da: "Graddage & GUF-tabel",        en: "Degree Days & GUF Table" },
-  degreeDays:         { da: "Graddage",                    en: "Degree Days" },
-  rawCons:            { da: "Rå forbrug",                  en: "Raw consumption" },
-  gafAdj:             { da: "GAF (korrigeret)",            en: "GAF (adjusted)" },
-  actual:             { da: "Aktuel",                      en: "Actual" },
-  raw:                { da: "Rå",                          en: "Raw" },
-  barTitle:           { da: "Forbrug – Søjlediagrammer",   en: "Consumption – Bar Charts" },
-  barSub:             { da: "Se månedlige forbrugsdata for varme, el og vand. Brug filtre til at sammenligne specifikke måneder på tværs af år.",
-                        en: "View monthly consumption data for heating, electricity, and water. Use filters to compare specific months across years." },
-  heat:               { da: "Varme",                       en: "Heating" },
-  elec:               { da: "El",                          en: "Electricity" },
-  water:              { da: "Vand",                        en: "Water" },
-  compareOne:         { da: "Sammenlign én måned",         en: "Compare one month" },
-  showAll:            { da: "Vis alle måneder",            en: "Show all months" },
-  compAcross:         { da: "sammenligning over år",       en: "comparison across years" },
-  monthlyCons:        { da: "Månedligt forbrug",           en: "Monthly consumption" },
-  dataTable:          { da: "Datatabel",                   en: "Data table" },
-  footerL:            { da: "homii – Prototype Dashboard | Kamstrup Metering Integration",
-                        en: "homii – Prototype Dashboard | Kamstrup Metering Integration" },
-  footerR:            { da: "Data: Simuleret demo-data | © 2026 homii",
-                        en: "Data: Simulated demo data | © 2026 homii" },
-  tariffTitle:        { da: "HOFOR Motivationstarif – Beregner", en: "HOFOR Motivational Tariff – Calculator" },
-  tariffSub:          { da: "Simulér den økonomiske effekt af afkølingsforbedringer. Korrektion: 0,8% af energiprisen per grad afvigelse.",
-                        en: "Simulate the financial impact of cooling improvements. Correction: 0.8% of energy price per degree deviation." },
-  zone:               { da: "Zone:",                       en: "Zone:" },
-  annualEnergy:       { da: "Årligt energiforbrug",        en: "Annual energy consumption" },
-  effektbetaling:     { da: "Effektbetaling",              en: "Capacity charge" },
-  energipris:         { da: "Energipris",                  en: "Energy price" },
-  afkKorrektion:      { da: "Afkølingskorrektion",         en: "Cooling correction" },
-  totalCost:          { da: "Samlet årlig omkostning",      en: "Total annual cost" },
-  whatIf:             { da: "Hvad hvis afkøling forbedres med", en: "What if cooling improves by" },
-  potentialSaving:    { da: "Potentiel årlig besparelse",   en: "Potential annual saving" },
-  currentCooling:     { da: "Aktuel afkøling",             en: "Current cooling" },
-  improvedCooling:    { da: "Forbedret afkøling",          en: "Improved cooling" },
-  thresholdChange:    { da: "Krav steg fra 29°C (2025) til 30°C (2026)", en: "Requirement rose from 29°C (2025) to 30°C (2026)" },
-  epcLabel:           { da: "Energimærkning",              en: "Energy Label" },
-  epcReq:             { da: "Krav: B inden 2030",          en: "Required: B by 2030" },
-  epcMonths:          { da: "mdr. til frist",              en: "months to deadline" },
-  legionellaTitle:    { da: "Legionella – Overvågning & Compliance", en: "Legionella – Monitoring & Compliance" },
-  legionellaSub:      { da: "Overvåg varmtvandstemperaturer for at sikre legionellaforebyggelse. Lovkrav: min. 50°C ved fjerneste tapsted. Anbefalet: 55–60°C i varmtvandsbeholder.",
-                        en: "Monitor hot water temperatures to ensure legionella prevention. Legal requirement: min. 50°C at furthest tap point. Recommended: 55–60°C in hot water tank." },
-  currentTemp:        { da: "Aktuel Temp.",                en: "Current Temp." },
-  minTemp24h:         { da: "Min. Temp. (24t)",            en: "Min. Temp. (24h)" },
-  daysSinceDisinf:    { da: "Dage siden desinfektion",     en: "Days since disinfection" },
-  compliancePct:      { da: "Compliance",                  en: "Compliance" },
-  hwTempTitle:        { da: "Varmtvandstemperatur – Seneste 30 dage", en: "Hot Water Temperature – Last 30 Days" },
-  tankTemp:           { da: "Beholder (°C)",               en: "Tank (°C)" },
-  tapTemp:            { da: "Tapsted (°C)",                en: "Tap point (°C)" },
-  legalMin:           { da: "Lovkrav (50°C)",              en: "Legal min. (50°C)" },
-  recommended:        { da: "Anbefalet (55°C)",            en: "Recommended (55°C)" },
-  disinfLog:          { da: "Termisk desinfektion – Log",  en: "Thermal Disinfection – Log" },
-  disinfDate:         { da: "Dato",                        en: "Date" },
-  disinfDuration:     { da: "Varighed",                    en: "Duration" },
-  disinfPeakTemp:     { da: "Maks. temp.",                 en: "Peak temp." },
-  disinfResult:       { da: "Resultat",                    en: "Result" },
-  disinfOk:           { da: "Godkendt",                    en: "Passed" },
-  disinfFail:         { da: "Utilstrækkelig",              en: "Insufficient" },
-  riskLevel:          { da: "Risikoniveau",                en: "Risk Level" },
-  riskLow:            { da: "Lav risiko",                  en: "Low risk" },
-  riskMedium:         { da: "Moderat risiko",              en: "Moderate risk" },
-  riskHigh:           { da: "Høj risiko",                  en: "High risk" },
-  aboveLegal:         { da: "Over lovkrav",                en: "Above legal min." },
-  belowLegal:         { da: "Under lovkrav",               en: "Below legal min." },
-  aboveRec:           { da: "Over anbefaling",             en: "Above recommended" },
-  dangerZone:         { da: "Farezonen: 25–45°C",          en: "Danger zone: 25–45°C" },
-  tempGauge:          { da: "Temperaturstatus",            en: "Temperature Status" },
-  selectBuilding:     { da: "Vælg bygning:",               en: "Select building:" },
-  bldgAll:            { da: "Alle bygninger (samlet)",     en: "All buildings (aggregated)" },
-  bldgA:              { da: "Blok A – Beholder 1",         en: "Block A – Tank 1" },
-  bldgB:              { da: "Blok B – Beholder 2",         en: "Block B – Tank 2" },
-  bldgC:              { da: "Blok C – Beholder 3",         en: "Block C – Tank 3" },
-  minutes:            { da: "min",                         en: "min" },
-  compliant:          { da: "I overensstemmelse",          en: "Compliant" },
-  nonCompliant:       { da: "Ikke i overensstemmelse",     en: "Non-compliant" },
-};
-
-const t = (k, lang) => dict[k]?.[lang] || dict[k]?.en || k;
-
-const MS = {
-  da: ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"],
-  en: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
-};
-const ML = {
-  da: ["Januar","Februar","Marts","April","Maj","Juni","Juli","August","September","Oktober","November","December"],
-  en: ["January","February","March","April","May","June","July","August","September","October","November","December"],
-};
-
-/* ═══════════════════════════════════════════════════════
-   SVG Icon System (replaces emojis for cross-platform consistency)
-   ═══════════════════════════════════════════════════════ */
-const Icon = {
-  cooling: (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M8 1v14M1 8h14M3.5 3.5l9 9M12.5 3.5l-9 9" />
-    </svg>
-  ),
-  degreeDays: (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M4 14V6M8 14V2M12 14V8" />
-    </svg>
-  ),
-  legionella: (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M8 2a5 5 0 0 1 5 5c0 3-2 5-5 7-3-2-5-4-5-7a5 5 0 0 1 5-5z" />
-      <circle cx="8" cy="7" r="1.5" />
-    </svg>
-  ),
-  consumption: (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M2 14h12M3 14V8h2v6M7 14V4h2v10M11 14V6h2v8" />
-    </svg>
-  ),
-};
-
-/* ═══════════════════════════════════════════════════════
-   Logo
-   ═══════════════════════════════════════════════════════ */
-const HomiiIcon = ({ size = 28, color = brand.blue }) => (
-  <svg width={size} height={size * 1.2} viewBox="-1 -1 71.4 86.2" fill={color}>
-    <path fillRule="evenodd" d="M69.43,26.46c0-2.87-1.43-5.54-3.82-7.13L39.46,1.92C36.58,0,32.85,0,29.97,1.92L3.82,19.33C1.43,20.93,0,23.59,0,26.46V79.03h.07v2.48a2.7,2.7,0,0,0,2.7,2.7H7.84a2.7,2.7,0,0,0,2.7-2.7V60.38c0-4.99,3.7-9.36,8.67-9.83,5.7-.54,10.51,3.96,10.51,9.55V71.17c0,7.2,5.84,13.04,13.04,13.04H62.04l7.39,0ZM40.19,71.17V60.55c0-10.65-8.12-19.79-18.75-20.47-3.96-.26-7.7.68-10.9,2.43V27.31l24.22-16.25L59.2,27.36V73.74H42.77a2.58,2.58,0,0,1-2.58-2.58Z"/>
-  </svg>
-);
-
-/* ═══════════════════════════════════════════════════════
-   Custom SegmentedControl (replaces ToggleGroup — Notion-style)
+   Custom SegmentedControl (Notion-style)
    ═══════════════════════════════════════════════════════ */
 function SegmentedControl({ value, onChange, options, size = "sm" }) {
   const sizeClasses = size === "sm" ? "text-xs h-7" : "text-sm h-8";
@@ -300,7 +84,7 @@ function mkLegionella(building) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   Refined shared components
+   Shared components
    ═══════════════════════════════════════════════════════ */
 const BrandTooltip = ({active, payload, label}) => {
   if (!active || !payload?.length) return null;
@@ -318,7 +102,6 @@ const BrandTooltip = ({active, payload, label}) => {
   );
 };
 
-/* — KPI Metric — Notion-inspired: clean, restrained, hierarchical */
 const Metric = ({ label, value, unit, sub, status }) => {
   const statusColor = status === "good" ? brand.green : status === "warn" ? brand.amber : status === "bad" ? brand.red : null;
   return (
@@ -340,14 +123,11 @@ const Metric = ({ label, value, unit, sub, status }) => {
   );
 };
 
-/* — Year pill selector — */
 const YearPill = ({year, active, onClick}) => (
   <button
     onClick={onClick}
     className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all duration-200 ${
-      active
-        ? "text-white shadow-sm"
-        : "text-slate-500 bg-transparent hover:bg-slate-100"
+      active ? "text-white shadow-sm" : "text-slate-500 bg-transparent hover:bg-slate-100"
     }`}
     style={active ? {background: yearColor[year]} : {}}
   >
@@ -355,7 +135,6 @@ const YearPill = ({year, active, onClick}) => (
   </button>
 );
 
-/* — Section header — consistent across all tabs */
 const SectionHeader = ({ title, description, children }) => (
   <div className="flex flex-wrap items-start justify-between gap-4">
     <div className="min-w-0 flex-1">
@@ -366,8 +145,7 @@ const SectionHeader = ({ title, description, children }) => (
   </div>
 );
 
-/* — Refined table — Attio-style: clean borders, no heavy header bars */
-const DataTable = ({ headers, rows, lang }) => (
+const DataTable = ({ headers, rows }) => (
   <div className="overflow-x-auto rounded-lg border border-slate-200">
     <table className="w-full text-sm">
       <thead>
@@ -384,7 +162,6 @@ const DataTable = ({ headers, rows, lang }) => (
   </div>
 );
 
-/* — Card Section title — */
 const SectionCard = ({ title, children, noPad }) => (
   <Card>
     {title && (
@@ -397,30 +174,6 @@ const SectionCard = ({ title, children, noPad }) => (
     </CardContent>
   </Card>
 );
-
-/* ═══════════════════════════════════════════════════════
-   EPC Badge — refined, less noisy
-   ═══════════════════════════════════════════════════════ */
-const EPC_COLORS = { A: "#16A34A", B: "#22C55E", C: "#F59E0B", D: "#F97316", E: "#EF4444", F: "#DC2626", G: "#991B1B" };
-
-function EpcBadge({ rating = "C", lang }) {
-  const monthsTo2030 = useMemo(() => {
-    const now = new Date();
-    const deadline = new Date(2030, 0, 1);
-    return Math.max(0, Math.round((deadline - now) / (1000 * 60 * 60 * 24 * 30.44)));
-  }, []);
-  return (
-    <div className="flex items-center gap-1.5 rounded-md px-2.5 py-1" style={{ background: "rgba(255,255,255,0.08)" }}>
-      <div className="w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold text-white" style={{ background: EPC_COLORS[rating] }}>
-        {rating}
-      </div>
-      <div className="text-[10px] leading-tight hidden sm:block">
-        <div className="text-white/70 font-medium">{t("epcLabel", lang)}</div>
-        <div className="text-white/40">{monthsTo2030} {t("epcMonths", lang)}</div>
-      </div>
-    </div>
-  );
-}
 
 /* ═══════════════════════════════════════════════════════
    Dashboard 1 – Cooling (Afkøling) + Tariff Simulator
@@ -477,7 +230,6 @@ function CoolingDash() {
         ]} />
       </SectionHeader>
 
-      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label={t("avgCooling",lang)} value={avgC} unit="°C" sub={ok ? `${t("aboveReq",lang)} (${thr}°C)` : `${t("belowReq",lang)} (${thr}°C)`} status={ok?"good":"bad"} />
         <Metric label={t("avgReturn",lang)} value={avgR} unit="°C" sub={avgR<40?t("goodReturn",lang):t("canImprove",lang)} status={avgR<40?"good":"warn"} />
@@ -485,7 +237,6 @@ function CoolingDash() {
         <Metric label={t("status",lang)} value={ok?t("bonus",lang):t("surcharge",lang)} sub={ok?t("expectedBonus",lang):t("riskSurcharge",lang)} status={ok?"good":"bad"} />
       </div>
 
-      {/* HOFOR Tariff Simulator */}
       <Card>
         <CardHeader className="pb-0 pt-4 px-5">
           <div className="flex items-center justify-between">
@@ -500,7 +251,6 @@ function CoolingDash() {
         </CardHeader>
         <CardContent className="px-5 pb-5 pt-3">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {/* Cost breakdown */}
             <div className="space-y-2.5">
               {[
                 { label: `${t("effektbetaling",lang)} (8.500 m²)`, val: fmtDKK(effektCost) },
@@ -517,7 +267,6 @@ function CoolingDash() {
                 <span className="text-lg font-bold tabular-nums" style={{color: brand.navy}}>{fmtDKK(totalCostVal)}</span>
               </div>
             </div>
-            {/* What-if slider */}
             <div className="space-y-3 rounded-lg p-4 bg-slate-50">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-slate-600">{t("whatIf",lang)}</span>
@@ -547,7 +296,6 @@ function CoolingDash() {
         </CardContent>
       </Card>
 
-      {/* Charts */}
       <SectionCard title={t("chartTitle",lang)}>
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart data={data} margin={{top:5,right:20,bottom:5,left:0}}>
@@ -577,7 +325,6 @@ function CoolingDash() {
         </ResponsiveContainer>
       </SectionCard>
 
-      {/* Data table */}
       <SectionCard title={t("coolingTable",lang)} noPad>
         <DataTable
           headers={[t("period",lang), t("supply",lang), t("returnT",lang), t("coolingC",lang), t("volume",lang), t("consCol",lang)]}
@@ -921,79 +668,38 @@ function BarDash() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   App Shell — Attio/Notion-inspired header + tab system
+   DashboardContainer — embeddable, no shell chrome
    ═══════════════════════════════════════════════════════ */
-export default function HomiiEnergyDashboard() {
-  const [lang, setLang] = useState("da");
+const tabDefs = [
+  { value: "cooling", icon: Icon.cooling, labelKey: "tabCooling" },
+  { value: "graddage", icon: Icon.degreeDays, labelKey: "tabGraddage" },
+  { value: "legionella", icon: Icon.legionella, labelKey: "tabLegionella" },
+  { value: "consumption", icon: Icon.consumption, labelKey: "tabConsumption" },
+];
+
+export default function DashboardContainer() {
+  const lang = useLang();
 
   return (
-    <LangCtx.Provider value={lang}>
-      <div className="min-h-screen flex flex-col" style={{fontFamily:"'Plus Jakarta Sans','Poppins',system-ui,sans-serif", background: brand.bg}}>
-        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-
-        {/* ─── Header ─── */}
-        <header className="flex items-center justify-between px-6 h-12 shrink-0" style={{background: brand.navy}}>
-          <div className="flex items-center gap-2">
-            <HomiiIcon size={18} color={brand.blue}/>
-            <span className="text-white text-sm font-bold tracking-tight">homii</span>
-            <span className="text-[11px] ml-1.5 text-white/40 hidden sm:inline">| {t("energyDashboard",lang)}</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <EpcBadge rating="C" lang={lang} />
-            <div className="w-px h-5 bg-white/10" />
-            {/* Lang toggle — Notion-style segmented */}
-            <div className="inline-flex rounded-md overflow-hidden bg-white/5">
-              {["da","en"].map(l => (
-                <button key={l} onClick={() => setLang(l)}
-                  className={`px-2.5 py-1 text-[10px] font-semibold transition-all duration-200 ${
-                    lang === l ? "bg-white/15 text-white" : "text-white/30 hover:text-white/50"
-                  }`}>
-                  {l.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <div className="w-px h-5 bg-white/10 hidden sm:block" />
-            <span className="text-[10px] text-white/30 hidden sm:inline">{t("dept",lang)}</span>
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{background: brand.blue + "40", border: `1px solid ${brand.blue}50`}}>AB</div>
-          </div>
-        </header>
-
-        {/* ─── Tab navigation ─── */}
-        <Tabs defaultValue="cooling" className="flex-1 flex flex-col">
-          <div className="bg-white border-b border-slate-200 px-6 shrink-0">
-            <TabsList className="bg-transparent h-10 gap-0 p-0">
-              {[
-                { value: "cooling", label: t("tabCooling",lang), icon: Icon.cooling },
-                { value: "graddage", label: t("tabGraddage",lang), icon: Icon.degreeDays },
-                { value: "legionella", label: t("tabLegionella",lang), icon: Icon.legionella },
-                { value: "consumption", label: t("tabConsumption",lang), icon: Icon.consumption },
-              ].map(tab => (
-                <TabsTrigger key={tab.value} value={tab.value}
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#3EB1C8] data-[state=active]:text-slate-900 data-[state=active]:shadow-none px-4 text-[13px] text-slate-400 hover:text-slate-600 transition-colors gap-1.5">
-                  <span className="opacity-60">{tab.icon}</span>
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-
-          <main className="flex-1 max-w-[1120px] w-full mx-auto px-6 py-6">
-            <TabsContent value="cooling"><CoolingDash/></TabsContent>
-            <TabsContent value="graddage"><GraddageDash/></TabsContent>
-            <TabsContent value="legionella"><LegionellaDash/></TabsContent>
-            <TabsContent value="consumption"><BarDash/></TabsContent>
-          </main>
-        </Tabs>
-
-        {/* ─── Footer ─── */}
-        <footer className="flex items-center justify-between px-6 py-2.5 border-t border-slate-200 bg-white shrink-0">
-          <div className="flex items-center gap-2">
-            <HomiiIcon size={12} color={brand.muted}/>
-            <span className="text-[10px] text-slate-400">{t("footerL",lang)}</span>
-          </div>
-          <span className="text-[10px] text-slate-300">{t("footerR",lang)}</span>
-        </footer>
+    <Tabs defaultValue="cooling" className="flex-1 flex flex-col">
+      <div className="bg-white border-b border-slate-200 px-6 shrink-0">
+        <TabsList className="bg-transparent h-10 gap-0 p-0">
+          {tabDefs.map(tab => (
+            <TabsTrigger key={tab.value} value={tab.value}
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#3EB1C8] data-[state=active]:text-slate-900 data-[state=active]:shadow-none px-4 text-[13px] text-slate-400 hover:text-slate-600 transition-colors gap-1.5">
+              <span className="opacity-60">{tab.icon}</span>
+              {t(tab.labelKey, lang)}
+            </TabsTrigger>
+          ))}
+        </TabsList>
       </div>
-    </LangCtx.Provider>
+
+      <main className="flex-1 max-w-[1120px] w-full mx-auto px-6 py-6">
+        <TabsContent value="cooling"><CoolingDash/></TabsContent>
+        <TabsContent value="graddage"><GraddageDash/></TabsContent>
+        <TabsContent value="legionella"><LegionellaDash/></TabsContent>
+        <TabsContent value="consumption"><BarDash/></TabsContent>
+      </main>
+    </Tabs>
   );
 }
