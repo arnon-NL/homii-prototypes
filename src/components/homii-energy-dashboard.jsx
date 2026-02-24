@@ -176,9 +176,219 @@ const SectionCard = ({ title, children, noPad }) => (
 );
 
 /* ═══════════════════════════════════════════════════════
-   Dashboard 1 – Cooling (Afkøling) + Tariff Simulator
+   Tab 1 — Unified Consumption & Analysis
+   Combines: Cooling temps, Heating bars, Degree Days
    ═══════════════════════════════════════════════════════ */
-function CoolingDash() {
+function ConsumptionDash() {
+  const lang = useLang();
+  const ms = MS[lang];
+  const ml = ML[lang];
+
+  // Cooling state
+  const [period, setPeriod] = useState("monthly");
+  const [meter, setMeter] = useState("all");
+  const coolData = useMemo(() => mkCooling(period, meter, lang), [period, meter, lang]);
+  const thr = HOFOR.standard.krav;
+
+  // Heating bars state
+  const [vis, setVis] = useState([2023,2024,2025]);
+  const [cmp, setCmp] = useState(false);
+  const [cmpM, setCmpM] = useState(1);
+  const barData = useMemo(() => mkBar(lang), [lang]);
+  const tog = y => setVis(p => p.includes(y) ? p.filter(x=>x!==y) : [...p,y]);
+
+  const cmpData = useMemo(() => {
+    if (!cmp) return null;
+    return [2021,2022,2023,2024,2025].filter(y=>vis.includes(y)).map(y=>({name:`${y}`,value:barData[cmpM]?.[`h${y}`]||0,fill:yearColor[y]}));
+  }, [cmp,cmpM,vis,barData]);
+
+  // Degree Days state
+  const [ddView, setDdView] = useState("monthly");
+  const ddAll = useMemo(mkGraddage, []);
+
+  const ddMv = useMemo(() => ms.map((m,mi) => {
+    const e = { name: m, ng: GN[GK[mi]] };
+    vis.forEach(y => { const r = ddAll.find(d=>d.year===y&&d.mi===mi); if(r){e[`a${y}`]=r.ag;e[`g${y}`]=r.gaf;e[`r${y}`]=r.raw;e[`u${y}`]=r.guf;} });
+    return e;
+  }), [ddAll, vis, ms]);
+
+  const ddYt = useMemo(() => [2021,2022,2023,2024,2025].map(y => {
+    const rows = ddAll.filter(d=>d.year===y);
+    return { name:`${y}`, ag:rows.reduce((s,r)=>s+r.ag,0), ng:GNT, guf:+(GNT/rows.reduce((s,r)=>s+r.ag,0)).toFixed(3), raw:+rows.reduce((s,r)=>s+r.raw,0).toFixed(0), gaf:+rows.reduce((s,r)=>s+r.gaf,0).toFixed(0) };
+  }), [ddAll]);
+
+  const meters = [
+    {id:"all",      l:t("allMeters",lang)},
+    {id:"meter-001",l:t("blockA",lang)},
+    {id:"meter-002",l:t("blockB",lang)},
+    {id:"meter-003",l:t("blockC",lang)},
+    {id:"meter-004",l:t("blockD",lang)},
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* — Section: Supply, Return & Cooling Temperatures — */}
+      <div className="space-y-4">
+        <SectionHeader title={t("chartTitle",lang)} description={t("coolingSub",lang)}>
+          <Select value={meter} onValueChange={setMeter}>
+            <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue/></SelectTrigger>
+            <SelectContent>{meters.map(m=><SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}</SelectContent>
+          </Select>
+          <SegmentedControl value={period} onChange={v=>v&&setPeriod(v)} options={[
+            {value:"weekly", label:t("weekly",lang)},
+            {value:"monthly", label:t("monthly",lang)},
+            {value:"yearly", label:t("yearly",lang)},
+          ]} />
+        </SectionHeader>
+
+        <SectionCard title={null}>
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={coolData} margin={{top:5,right:20,bottom:5,left:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
+              <YAxis tick={{fontSize:11, fill:brand.muted}} unit="°C" axisLine={false} tickLine={false} />
+              <Tooltip content={<BrandTooltip/>}/>
+              <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
+              <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`${t("req",lang)}: ${thr}°C`,fill:brand.red,fontSize:10,position:"right"}}/>
+              <Area type="monotone" dataKey="cooling" fill={brand.blue} fillOpacity={0.06} stroke="none" name={t("coolingArea",lang)}/>
+              <Line type="monotone" dataKey="supply" stroke={brand.red} strokeWidth={1.5} dot={false} name={t("supplyLine",lang)}/>
+              <Line type="monotone" dataKey="return" stroke={brand.amber} strokeWidth={1.5} dot={false} name={t("returnLine",lang)}/>
+              <Line type="monotone" dataKey="cooling" stroke={brand.blue} strokeWidth={2} dot={{r:2.5,fill:brand.blue,strokeWidth:0}} name={t("coolingLine",lang)}/>
+            </ComposedChart>
+          </ResponsiveContainer>
+        </SectionCard>
+      </div>
+
+      <div className="h-px bg-slate-200" />
+
+      {/* — Section: Heating Consumption Bars — */}
+      <div className="space-y-4">
+        <SectionHeader title={t("heatingConsTitle",lang)} description={t("heatingConsSub",lang)} />
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-slate-400 mr-1">{t("showYears",lang)}</span>
+          {[2021,2022,2023,2024,2025].map(y=><YearPill key={y} year={y} active={vis.includes(y)} onClick={()=>tog(y)}/>)}
+          <span className="w-px h-4 bg-slate-200 mx-2"/>
+          <Button variant="outline" size="sm" className="text-[11px] h-7 px-2.5" onClick={()=>setCmp(!cmp)}>
+            {cmp?t("showAll",lang):t("compareOne",lang)}
+          </Button>
+          {cmp && (
+            <Select value={`${cmpM}`} onValueChange={v=>setCmpM(parseInt(v))}>
+              <SelectTrigger className="w-[130px] h-7 text-xs"><SelectValue/></SelectTrigger>
+              <SelectContent>{ml.map((m,idx)=><SelectItem key={idx} value={`${idx}`}>{m}</SelectItem>)}</SelectContent>
+            </Select>
+          )}
+        </div>
+
+        <SectionCard title={cmp ? `${t("heat",lang)} – ${ml[cmpM]} (${t("compAcross",lang)})` : `${t("heat",lang)} – ${t("monthlyCons",lang)} (MWh)`}>
+          <ResponsiveContainer width="100%" height={300}>
+            {cmp ? (
+              <BarChart data={cmpData} margin={{top:5,right:20,bottom:5,left:0}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="name" tick={{fontSize:12, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
+                <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false} />
+                <Tooltip content={<BrandTooltip/>}/>
+                <Bar dataKey="value" name={`${t("heat",lang)} (MWh)`} radius={[4,4,0,0]} barSize={48}>
+                  {cmpData?.map((d,idx)=><Cell key={idx} fill={d.fill}/>)}
+                </Bar>
+              </BarChart>
+            ) : (
+              <BarChart data={barData} margin={{top:5,right:20,bottom:5,left:0}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
+                <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false} />
+                <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
+                {vis.map(y=><Bar key={y} dataKey={`h${y}`} name={`${y}`} fill={yearColor[y]} radius={[3,3,0,0]}/>)}
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        </SectionCard>
+
+        <SectionCard title={`${t("heat",lang)} – ${t("dataTable",lang)} (MWh)`} noPad>
+          <DataTable
+            headers={[t("month",lang), ...vis.map(y => `${y}`)]}
+            rows={
+              <>
+                {barData.map((r,idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="px-4 py-2 text-sm font-medium" style={{color: brand.navy}}>{r.name}</td>
+                    {vis.map(y=><td key={y} className="px-4 py-2 text-sm text-right tabular-nums">{r[`h${y}`]?.toFixed(1)}</td>)}
+                  </tr>
+                ))}
+                <tr className="bg-slate-50 border-t border-slate-200 font-semibold">
+                  <td className="px-4 py-2.5 text-sm" style={{color: brand.navy}}>{t("total",lang)}</td>
+                  {vis.map(y=><td key={y} className="px-4 py-2.5 text-sm text-right tabular-nums" style={{color: brand.navy}}>{barData.reduce((s,r)=>s+(r[`h${y}`]||0),0).toFixed(1)}</td>)}
+                </tr>
+              </>
+            }
+          />
+        </SectionCard>
+      </div>
+
+      <div className="h-px bg-slate-200" />
+
+      {/* — Section: Degree Days (GUF & GAF) — */}
+      <div className="space-y-4">
+        <SectionHeader title={t("graddageTitle",lang)} description={t("graddageSub",lang)}>
+          <SegmentedControl value={ddView} onChange={v=>v&&setDdView(v)} options={[
+            {value:"monthly", label:t("monthly",lang)},
+            {value:"yearly", label:t("yearlyTotal",lang)},
+          ]} />
+        </SectionHeader>
+
+        {ddView==="yearly" && (
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            {ddYt.filter(x=>vis.includes(+x.name)).map(x=>(
+              <Metric key={x.name} label={`GAF ${x.name}`} value={x.gaf.toLocaleString(lang==="da"?"da-DK":"en-US")} unit="MWh"
+                sub={`GUF: ${x.guf} | ${t("raw",lang)}: ${x.raw.toLocaleString(lang==="da"?"da-DK":"en-US")} MWh`} />
+            ))}
+          </div>
+        )}
+
+        <SectionCard title={ddView==="monthly"?t("gafMonthly",lang):t("gafYearly",lang)}>
+          <ResponsiveContainer width="100%" height={280}>
+            {ddView==="monthly" ? (
+              <BarChart data={ddMv} margin={{top:5,right:20,bottom:5,left:0}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
+                <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false} />
+                <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
+                {vis.map(y=><Bar key={y} dataKey={`g${y}`} name={`GAF ${y}`} fill={yearColor[y]} radius={[3,3,0,0]}/>)}
+              </BarChart>
+            ) : (
+              <BarChart data={ddYt.filter(x=>vis.includes(+x.name))} margin={{top:5,right:20,bottom:5,left:0}}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
+                <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false} />
+                <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
+                <Bar dataKey="raw" name={t("rawCons",lang)} fill="#CBD5E1" radius={[3,3,0,0]}/>
+                <Bar dataKey="gaf" name={t("gafAdj",lang)} fill={brand.blue} radius={[3,3,0,0]}/>
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        </SectionCard>
+
+        <SectionCard title={t("ddVsNormal",lang)}>
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={ddMv} margin={{top:5,right:20,bottom:5,left:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
+              <YAxis tick={{fontSize:11, fill:brand.muted}} axisLine={false} tickLine={false} />
+              <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
+              <Line type="monotone" dataKey="ng" stroke={brand.red} strokeWidth={1.5} strokeDasharray="6 4" dot={false} name={t("normalYear",lang)}/>
+              {vis.map(y=><Line key={y} type="monotone" dataKey={`a${y}`} stroke={yearColor[y]} strokeWidth={1.5} dot={{r:2}} name={`${t("actual",lang)} ${y}`}/>)}
+            </ComposedChart>
+          </ResponsiveContainer>
+        </SectionCard>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   Tab 2 — HOFOR Tariff Simulator
+   ═══════════════════════════════════════════════════════ */
+function TariffDash() {
   const lang = useLang();
   const [period, setPeriod] = useState("monthly");
   const [meter, setMeter] = useState("all");
@@ -206,30 +416,13 @@ function CoolingDash() {
   const totalCostImproved = effektCost + energiCost - korrektionImproved;
   const saving = totalCostVal - totalCostImproved;
 
-  const meters = [
-    {id:"all",      l:t("allMeters",lang)},
-    {id:"meter-001",l:t("blockA",lang)},
-    {id:"meter-002",l:t("blockB",lang)},
-    {id:"meter-003",l:t("blockC",lang)},
-    {id:"meter-004",l:t("blockD",lang)},
-  ];
-
   const fmtDKK = (v) => v.toLocaleString(lang==="da"?"da-DK":"en-US", { style: "currency", currency: "DKK", maximumFractionDigits: 0 });
 
   return (
     <div className="space-y-5">
-      <SectionHeader title={t("coolingTitle",lang)} description={t("coolingSub",lang)}>
-        <Select value={meter} onValueChange={setMeter}>
-          <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue/></SelectTrigger>
-          <SelectContent>{meters.map(m=><SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}</SelectContent>
-        </Select>
-        <SegmentedControl value={period} onChange={v=>v&&setPeriod(v)} options={[
-          {value:"weekly", label:t("weekly",lang)},
-          {value:"monthly", label:t("monthly",lang)},
-          {value:"yearly", label:t("yearly",lang)},
-        ]} />
-      </SectionHeader>
+      <SectionHeader title={t("tariffTitle",lang)} description={t("tariffSub",lang)} />
 
+      {/* Context metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Metric label={t("avgCooling",lang)} value={avgC} unit="°C" sub={ok ? `${t("aboveReq",lang)} (${thr}°C)` : `${t("belowReq",lang)} (${thr}°C)`} status={ok?"good":"bad"} />
         <Metric label={t("avgReturn",lang)} value={avgR} unit="°C" sub={avgR<40?t("goodReturn",lang):t("canImprove",lang)} status={avgR<40?"good":"warn"} />
@@ -237,6 +430,7 @@ function CoolingDash() {
         <Metric label={t("status",lang)} value={ok?t("bonus",lang):t("surcharge",lang)} sub={ok?t("expectedBonus",lang):t("riskSurcharge",lang)} status={ok?"good":"bad"} />
       </div>
 
+      {/* Tariff calculator */}
       <Card>
         <CardHeader className="pb-0 pt-4 px-5">
           <div className="flex items-center justify-between">
@@ -295,6 +489,52 @@ function CoolingDash() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   Exported Reports — for the Reports page
+   ═══════════════════════════════════════════════════════ */
+export function CoolingReport() {
+  const lang = useLang();
+  const [period, setPeriod] = useState("monthly");
+  const [meter, setMeter] = useState("all");
+  const data = useMemo(() => mkCooling(period, meter, lang), [period, meter, lang]);
+  const thr = HOFOR.standard.krav;
+
+  const avg = (k) => +(data.reduce((s,d)=>s+d[k],0)/data.length).toFixed(1);
+  const avgC = avg("cooling"), avgR = avg("return"), totMWh = +data.reduce((s,d)=>s+d.mwh,0).toFixed(1);
+  const ok = avgC >= thr;
+
+  const meters = [
+    {id:"all",      l:t("allMeters",lang)},
+    {id:"meter-001",l:t("blockA",lang)},
+    {id:"meter-002",l:t("blockB",lang)},
+    {id:"meter-003",l:t("blockC",lang)},
+    {id:"meter-004",l:t("blockD",lang)},
+  ];
+
+  return (
+    <div className="space-y-5">
+      <SectionHeader title={t("coolingTitle",lang)} description={t("coolingSub",lang)}>
+        <Select value={meter} onValueChange={setMeter}>
+          <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue/></SelectTrigger>
+          <SelectContent>{meters.map(m=><SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}</SelectContent>
+        </Select>
+        <SegmentedControl value={period} onChange={v=>v&&setPeriod(v)} options={[
+          {value:"weekly", label:t("weekly",lang)},
+          {value:"monthly", label:t("monthly",lang)},
+          {value:"yearly", label:t("yearly",lang)},
+        ]} />
+      </SectionHeader>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Metric label={t("avgCooling",lang)} value={avgC} unit="°C" sub={ok ? `${t("aboveReq",lang)} (${thr}°C)` : `${t("belowReq",lang)} (${thr}°C)`} status={ok?"good":"bad"} />
+        <Metric label={t("avgReturn",lang)} value={avgR} unit="°C" sub={avgR<40?t("goodReturn",lang):t("canImprove",lang)} status={avgR<40?"good":"warn"} />
+        <Metric label={t("totalCons",lang)} value={totMWh} unit="MWh" />
+        <Metric label={t("status",lang)} value={ok?t("bonus",lang):t("surcharge",lang)} sub={ok?t("expectedBonus",lang):t("riskSurcharge",lang)} status={ok?"good":"bad"} />
+      </div>
 
       <SectionCard title={t("chartTitle",lang)}>
         <ResponsiveContainer width="100%" height={300}>
@@ -344,120 +584,12 @@ function CoolingDash() {
   );
 }
 
-/* ═══════════════════════════════════════════════════════
-   Dashboard 2 – Graddage (GUF & GAF)
-   ═══════════════════════════════════════════════════════ */
-function GraddageDash() {
-  const lang = useLang();
-  const ms = MS[lang];
-  const [view, setView] = useState("monthly");
-  const [sel, setSel] = useState([2023,2024,2025]);
-  const all = useMemo(mkGraddage,[]);
-  const toggle = y => setSel(p=>p.includes(y)?p.filter(x=>x!==y):[...p,y]);
-
-  const mv = useMemo(()=>ms.map((m,mi)=>{
-    const e={name:m,ng:GN[GK[mi]]};
-    sel.forEach(y=>{const r=all.find(d=>d.year===y&&d.mi===mi);if(r){e[`a${y}`]=r.ag;e[`g${y}`]=r.gaf;e[`r${y}`]=r.raw;e[`u${y}`]=r.guf;}});return e;
-  }),[all,sel,ms]);
-
-  const yt = useMemo(()=>[2021,2022,2023,2024,2025].map(y=>{
-    const rows=all.filter(d=>d.year===y);
-    return{name:`${y}`,ag:rows.reduce((s,r)=>s+r.ag,0),ng:GNT,guf:+(GNT/rows.reduce((s,r)=>s+r.ag,0)).toFixed(3),raw:+rows.reduce((s,r)=>s+r.raw,0).toFixed(0),gaf:+rows.reduce((s,r)=>s+r.gaf,0).toFixed(0)};
-  }),[all]);
-
-  return (
-    <div className="space-y-5">
-      <SectionHeader title={t("graddageTitle",lang)} description={t("graddageSub",lang)}>
-        <SegmentedControl value={view} onChange={v=>v&&setView(v)} options={[
-          {value:"monthly", label:t("monthly",lang)},
-          {value:"yearly", label:t("yearlyTotal",lang)},
-        ]} />
-      </SectionHeader>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-xs text-slate-400 mr-1">{t("showYears",lang)}</span>
-        {[2021,2022,2023,2024,2025].map(y=><YearPill key={y} year={y} active={sel.includes(y)} onClick={()=>toggle(y)}/>)}
-      </div>
-
-      {view==="yearly" && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {yt.filter(x=>sel.includes(+x.name)).map(x=>(
-            <Metric key={x.name} label={`GAF ${x.name}`} value={x.gaf.toLocaleString(lang==="da"?"da-DK":"en-US")} unit="MWh"
-              sub={`GUF: ${x.guf} | ${t("raw",lang)}: ${x.raw.toLocaleString(lang==="da"?"da-DK":"en-US")} MWh`} />
-          ))}
-        </div>
-      )}
-
-      <SectionCard title={view==="monthly"?t("gafMonthly",lang):t("gafYearly",lang)}>
-        <ResponsiveContainer width="100%" height={320}>
-          {view==="monthly"?(
-            <BarChart data={mv} margin={{top:5,right:20,bottom:5,left:0}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-              <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false} />
-              <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
-              {sel.map(y=><Bar key={y} dataKey={`g${y}`} name={`GAF ${y}`} fill={yearColor[y]} radius={[3,3,0,0]}/>)}
-            </BarChart>
-          ):(
-            <BarChart data={yt.filter(x=>sel.includes(+x.name))} margin={{top:5,right:20,bottom:5,left:0}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-              <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false} />
-              <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
-              <Bar dataKey="raw" name={t("rawCons",lang)} fill="#CBD5E1" radius={[3,3,0,0]}/>
-              <Bar dataKey="gaf" name={t("gafAdj",lang)} fill={brand.blue} radius={[3,3,0,0]}/>
-            </BarChart>
-          )}
-        </ResponsiveContainer>
-      </SectionCard>
-
-      <SectionCard title={t("ddVsNormal",lang)}>
-        <ResponsiveContainer width="100%" height={240}>
-          <ComposedChart data={mv} margin={{top:5,right:20,bottom:5,left:0}}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-            <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-            <YAxis tick={{fontSize:11, fill:brand.muted}} axisLine={false} tickLine={false} />
-            <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
-            <Line type="monotone" dataKey="ng" stroke={brand.red} strokeWidth={1.5} strokeDasharray="6 4" dot={false} name={t("normalYear",lang)}/>
-            {sel.map(y=><Line key={y} type="monotone" dataKey={`a${y}`} stroke={yearColor[y]} strokeWidth={1.5} dot={{r:2}} name={`${t("actual",lang)} ${y}`}/>)}
-          </ComposedChart>
-        </ResponsiveContainer>
-      </SectionCard>
-
-      <SectionCard title={t("ddTable",lang)} noPad>
-        <DataTable
-          headers={[
-            t("month",lang), t("normalYear",lang),
-            ...sel.flatMap(y => [`${t("degreeDays",lang)} ${y}`, "GUF", "GAF"]),
-          ]}
-          rows={mv.map((r,idx) => (
-            <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-              <td className="px-4 py-2 text-sm font-medium" style={{color: brand.navy}}>{r.name}</td>
-              <td className="px-4 py-2 text-sm text-right tabular-nums">{r.ng}</td>
-              {sel.map(y => (
-                <Fragment key={y}>
-                  <td className="px-4 py-2 text-sm text-right tabular-nums border-l border-slate-100">{r[`a${y}`] || "–"}</td>
-                  <td className="px-4 py-2 text-sm text-right tabular-nums font-medium" style={{color: brand.blue}}>{r[`u${y}`] || "–"}</td>
-                  <td className="px-4 py-2 text-sm text-right tabular-nums font-medium">{r[`g${y}`]?.toFixed(0) || "–"}</td>
-                </Fragment>
-              ))}
-            </tr>
-          ))}
-        />
-      </SectionCard>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════
-   Dashboard 3 – Legionella Compliance Monitor
-   ═══════════════════════════════════════════════════════ */
-function LegionellaDash() {
+export function LegionellaReport() {
   const lang = useLang();
   const [building, setBuilding] = useState("all");
   const lData = useMemo(() => mkLegionella(building), [building]);
 
-  const buildings = [
+  const bldgs = [
     { id: "all",    l: t("bldgAll", lang) },
     { id: "bldg-A", l: t("bldgA", lang) },
     { id: "bldg-B", l: t("bldgB", lang) },
@@ -507,7 +639,7 @@ function LegionellaDash() {
       <SectionHeader title={t("legionellaTitle",lang)} description={t("legionellaSub",lang)}>
         <Select value={building} onValueChange={setBuilding}>
           <SelectTrigger className="w-[220px] h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>{buildings.map(b => <SelectItem key={b.id} value={b.id}>{b.l}</SelectItem>)}</SelectContent>
+          <SelectContent>{bldgs.map(b => <SelectItem key={b.id} value={b.id}>{b.l}</SelectItem>)}</SelectContent>
         </Select>
       </SectionHeader>
 
@@ -575,113 +707,18 @@ function LegionellaDash() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   Dashboard 4 – Consumption Bar Charts
-   ═══════════════════════════════════════════════════════ */
-function BarDash() {
-  const lang = useLang();
-  const ml = ML[lang];
-  const [res, setRes] = useState("h");
-  const [cmp, setCmp] = useState(false);
-  const [cmpM, setCmpM] = useState(1);
-  const [vis, setVis] = useState([2023,2024,2025]);
-  const data = useMemo(()=>mkBar(lang),[lang]);
-  const tog = y => setVis(p=>p.includes(y)?p.filter(x=>x!==y):[...p,y]);
-
-  const rLbl = {h:t("heat",lang),e:t("elec",lang),w:t("water",lang)}[res];
-  const uLbl = {h:"MWh",e:"MWh",w:"m³"}[res];
-
-  const cmpData = useMemo(()=>{
-    if(!cmp) return null;
-    return [2021,2022,2023,2024,2025].filter(y=>vis.includes(y)).map(y=>({name:`${y}`,value:data[cmpM]?.[`${res}${y}`]||0,fill:yearColor[y]}));
-  },[cmp,cmpM,res,vis,data]);
-
-  return (
-    <div className="space-y-5">
-      <SectionHeader title={t("barTitle",lang)} description={t("barSub",lang)}>
-        <SegmentedControl value={res} onChange={v=>v&&setRes(v)} options={[
-          {value:"h", label:t("heat",lang)},
-          {value:"e", label:t("elec",lang)},
-          {value:"w", label:t("water",lang)},
-        ]} />
-      </SectionHeader>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-xs text-slate-400 mr-1">{t("showYears",lang)}</span>
-        {[2021,2022,2023,2024,2025].map(y=><YearPill key={y} year={y} active={vis.includes(y)} onClick={()=>tog(y)}/>)}
-        <span className="w-px h-4 bg-slate-200 mx-2"/>
-        <Button variant="outline" size="sm" className="text-[11px] h-7 px-2.5" onClick={()=>setCmp(!cmp)}>
-          {cmp?t("showAll",lang):t("compareOne",lang)}
-        </Button>
-        {cmp && (
-          <Select value={`${cmpM}`} onValueChange={v=>setCmpM(parseInt(v))}>
-            <SelectTrigger className="w-[130px] h-7 text-xs"><SelectValue/></SelectTrigger>
-            <SelectContent>{ml.map((m,idx)=><SelectItem key={idx} value={`${idx}`}>{m}</SelectItem>)}</SelectContent>
-          </Select>
-        )}
-      </div>
-
-      <SectionCard title={cmp ? `${rLbl} – ${ml[cmpM]} (${t("compAcross",lang)})` : `${rLbl} – ${t("monthlyCons",lang)} (${uLbl})`}>
-        <ResponsiveContainer width="100%" height={340}>
-          {cmp?(
-            <BarChart data={cmpData} margin={{top:5,right:20,bottom:5,left:0}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="name" tick={{fontSize:12, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-              <YAxis tick={{fontSize:11, fill:brand.muted}} unit={` ${uLbl}`} axisLine={false} tickLine={false} />
-              <Tooltip content={<BrandTooltip/>}/>
-              <Bar dataKey="value" name={`${rLbl} (${uLbl})`} radius={[4,4,0,0]} barSize={48}>
-                {cmpData?.map((d,idx)=><Cell key={idx} fill={d.fill}/>)}
-              </Bar>
-            </BarChart>
-          ):(
-            <BarChart data={data} margin={{top:5,right:20,bottom:5,left:0}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-              <YAxis tick={{fontSize:11, fill:brand.muted}} unit={` ${uLbl}`} axisLine={false} tickLine={false} />
-              <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
-              {vis.map(y=><Bar key={y} dataKey={`${res}${y}`} name={`${y}`} fill={yearColor[y]} radius={[3,3,0,0]}/>)}
-            </BarChart>
-          )}
-        </ResponsiveContainer>
-      </SectionCard>
-
-      <SectionCard title={`${rLbl} – ${t("dataTable",lang)} (${uLbl})`} noPad>
-        <DataTable
-          headers={[t("month",lang), ...vis.map(y => `${y}`)]}
-          rows={
-            <>
-              {data.map((r,idx) => (
-                <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-4 py-2 text-sm font-medium" style={{color: brand.navy}}>{r.name}</td>
-                  {vis.map(y=><td key={y} className="px-4 py-2 text-sm text-right tabular-nums">{r[`${res}${y}`]?.toFixed(1)}</td>)}
-                </tr>
-              ))}
-              <tr className="bg-slate-50 border-t border-slate-200 font-semibold">
-                <td className="px-4 py-2.5 text-sm" style={{color: brand.navy}}>{t("total",lang)}</td>
-                {vis.map(y=><td key={y} className="px-4 py-2.5 text-sm text-right tabular-nums" style={{color: brand.navy}}>{data.reduce((s,r)=>s+(r[`${res}${y}`]||0),0).toFixed(1)}</td>)}
-              </tr>
-            </>
-          }
-        />
-      </SectionCard>
-    </div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════
-   DashboardContainer — embeddable, no shell chrome
+   DashboardContainer — 2 tabs: Consumption & Tariff
    ═══════════════════════════════════════════════════════ */
 const tabDefs = [
-  { value: "cooling", icon: Icon.cooling, labelKey: "tabCooling" },
-  { value: "graddage", icon: Icon.degreeDays, labelKey: "tabGraddage" },
-  { value: "legionella", icon: Icon.legionella, labelKey: "tabLegionella" },
-  { value: "consumption", icon: Icon.consumption, labelKey: "tabConsumption" },
+  { value: "consumption", icon: Icon.consumption, labelKey: "tabConsumptionAnalysis" },
+  { value: "tariff", icon: Icon.cooling, labelKey: "tabTariff" },
 ];
 
 export default function DashboardContainer() {
   const lang = useLang();
 
   return (
-    <Tabs defaultValue="cooling" className="flex-1 flex flex-col">
+    <Tabs defaultValue="consumption" className="flex-1 flex flex-col">
       <div className="bg-white border-b border-slate-200 px-6 shrink-0">
         <TabsList className="bg-transparent h-10 gap-0 p-0">
           {tabDefs.map(tab => (
@@ -694,11 +731,9 @@ export default function DashboardContainer() {
         </TabsList>
       </div>
 
-      <main className="flex-1 max-w-[1120px] w-full mx-auto px-6 py-6">
-        <TabsContent value="cooling"><CoolingDash/></TabsContent>
-        <TabsContent value="graddage"><GraddageDash/></TabsContent>
-        <TabsContent value="legionella"><LegionellaDash/></TabsContent>
-        <TabsContent value="consumption"><BarDash/></TabsContent>
+      <main className="flex-1 max-w-[1120px] w-full mx-auto px-6 py-6 overflow-y-auto">
+        <TabsContent value="consumption"><ConsumptionDash/></TabsContent>
+        <TabsContent value="tariff"><TariffDash/></TabsContent>
       </main>
     </Tabs>
   );

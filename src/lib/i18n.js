@@ -202,6 +202,25 @@ export const dict = {
   timeline3to6:            { da: "3-6 mdr.",                  en: "3-6 mo." },
   timeline6to12:           { da: "6-12 mdr.",                 en: "6-12 mo." },
   timeline12to24:          { da: "12-24 mdr.",                en: "12-24 mo." },
+  // v6: Restructured tabs
+  tabConsumptionAnalysis:  { da: "Forbrug & Analyse",           en: "Consumption & Analysis" },
+  tabTariff:               { da: "HOFOR Tarif",                 en: "HOFOR Tariff" },
+  heatingConsTitle:        { da: "Varmeforbrug",                en: "Heating Consumption" },
+  heatingConsSub:          { da: "Månedligt fjernvarmeforbrug med graddagekorrigering", en: "Monthly district heating consumption with degree day adjustment" },
+  // v6: Records section
+  records:                 { da: "Registre",                    en: "Records" },
+  // v6: Meters page
+  meterType:               { da: "Type",                        en: "Type" },
+  meterStatus:             { da: "Status",                      en: "Status" },
+  lastReading:             { da: "Seneste aflæsning",           en: "Last Reading" },
+  readingDate:             { da: "Aflæsningsdato",              en: "Reading Date" },
+  active:                  { da: "Aktiv",                       en: "Active" },
+  // v6: Reports page
+  reportCoolingTitle:      { da: "Afkølingsrapport",            en: "Cooling Analysis Report" },
+  reportCoolingDesc:       { da: "Detaljeret afkølingsanalyse med fremløb, retur og HOFOR-metrikker", en: "Detailed cooling analysis with supply, return and HOFOR metrics" },
+  reportLegionellaTitle:   { da: "Legionella Compliance",       en: "Legionella Compliance" },
+  reportLegionellaDesc:    { da: "Varmtvandsovervågning og termisk desinfektionslog", en: "Hot water monitoring and thermal disinfection log" },
+  reportUpdated:           { da: "Senest opdateret",            en: "Last updated" },
 };
 
 export const t = (k, lang) => dict[k]?.[lang] || dict[k]?.en || k;

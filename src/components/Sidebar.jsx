@@ -1,9 +1,7 @@
 import React from "react";
-import { Home, Inbox, CheckSquare, BarChart3, Zap, Building2, Gauge, Settings, ChevronDown } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Home, Inbox, CheckSquare, BarChart3, Zap, Building2, Gauge } from "lucide-react";
 import { brand, HomiiIcon } from "@/lib/brand";
 import { t } from "@/lib/i18n";
-import { billingCycles } from "@/lib/mockData";
 
 const navItems = [
   { id: "home",      icon: Home,        key: "home" },
@@ -18,26 +16,15 @@ const recordItems = [
   { id: "meters",    icon: Gauge,     key: "meters",    count: 12 },
 ];
 
-export default function Sidebar({ activePage, onNavigate, lang, onLangChange, cycle, onCycleChange }) {
+export default function Sidebar({ activePage, onNavigate, lang, onLangChange }) {
   return (
     <aside className="w-60 shrink-0 border-r border-slate-200 bg-slate-50/80 flex flex-col h-full select-none">
       {/* Logo + Org */}
       <div className="px-4 pt-4 pb-3">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2">
           <HomiiIcon size={18} color={brand.blue} />
           <span className="text-sm font-bold tracking-tight" style={{ color: brand.navy }}>homii</span>
         </div>
-        <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-1.5">{t("billingCycle", lang)}</div>
-        <Select value={cycle} onValueChange={onCycleChange}>
-          <SelectTrigger className="w-full h-7 text-xs bg-white border-slate-200">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {billingCycles.map(c => (
-              <SelectItem key={c.id} value={c.id}>{c.label}{c.active ? " •" : ""}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       <div className="h-px bg-slate-200 mx-3" />
@@ -65,7 +52,9 @@ export default function Sidebar({ activePage, onNavigate, lang, onLangChange, cy
 
         <div className="h-px bg-slate-200 my-2 mx-1" />
 
-        <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Records</div>
+        <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+          {t("records", lang)}
+        </div>
         {recordItems.map(item => {
           const Icon = item.icon;
           const isActive = activePage === item.id;
@@ -95,7 +84,6 @@ export default function Sidebar({ activePage, onNavigate, lang, onLangChange, cy
           <span className="text-[11px] text-slate-500">Admin</span>
         </div>
         <div className="flex items-center gap-1">
-          {/* Lang toggle */}
           <div className="inline-flex rounded-md overflow-hidden bg-slate-200/60">
             {["da", "en"].map(l => (
               <button key={l} onClick={() => onLangChange(l)}
