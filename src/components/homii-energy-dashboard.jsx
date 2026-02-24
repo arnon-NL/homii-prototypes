@@ -7,20 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 /* ═══════════════════════════════════════════════════════
-   homii brand tokens
-   ═══════════════════════════════════════════════════════ */
-const brand = {
-  navy: "#1F2A44",
-  blue: "#3EB1C8",
-  midBlue: "#3B8EA5",
-  green: "#8ECDA0",
-  red: "#E85D5D",
-  amber: "#F5A623",
-};
-
-const yearColor = { 2021: "#94A3B8", 2022: "#64748B", 2023: "#3B8EA5", 2024: "#3EB1C8", 2025: "#1F2A44" };
-
-/* ═══════════════════════════════════════════════════════
    Custom ToggleGroup (replaces @/components/ui/toggle-group)
    ═══════════════════════════════════════════════════════ */
 function ToggleGroup({ type, value, onValueChange, className, children }) {
@@ -48,6 +34,31 @@ function ToggleGroupItem({ value, _selected, _onSelect, className, children }) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   homii brand tokens
+   ═══════════════════════════════════════════════════════ */
+const brand = {
+  navy: "#1F2A44",
+  blue: "#3EB1C8",
+  midBlue: "#3B8EA5",
+  green: "#8ECDA0",
+  red: "#E85D5D",
+  amber: "#F5A623",
+};
+
+const yearColor = { 2021: "#94A3B8", 2022: "#64748B", 2023: "#3B8EA5", 2024: "#3EB1C8", 2025: "#1F2A44" };
+
+/* ═══════════════════════════════════════════════════════
+   HOFOR 2026 Tariff Constants
+   ═══════════════════════════════════════════════════════ */
+const HOFOR = {
+  standard: { krav: 30, bonusAbove: 35, surchargeBelow: 25, label: "Standard" },
+  vesterbro: { krav: 25, bonusAbove: 30, surchargeBelow: 20, label: "Vesterbro (lavtemp.)" },
+  korrektionPct: 0.008, // 0.8% per degree
+  energiprisPerMWh: 650, // DKK/MWh approximate HOFOR 2026
+  effektbetalingPerM2: 42, // DKK/m²/year approximate
+};
+
+/* ═══════════════════════════════════════════════════════
    i18n
    ═══════════════════════════════════════════════════════ */
 const LangCtx = createContext("da");
@@ -58,6 +69,7 @@ const dict = {
   dept:               { da: "Afdeling: KAB Ørestad",      en: "Department: KAB Ørestad" },
   tabCooling:         { da: "Afkøling",                   en: "Cooling" },
   tabGraddage:        { da: "Graddage",                   en: "Degree Days" },
+  tabLegionella:      { da: "Legionella",                 en: "Legionella" },
   tabConsumption:     { da: "Forbrug",                    en: "Consumption" },
   showYears:          { da: "Vis år:",                     en: "Show years:" },
   month:              { da: "Måned",                       en: "Month" },
@@ -68,18 +80,18 @@ const dict = {
   yearly:             { da: "Årlig",                       en: "Yearly" },
   yearlyTotal:        { da: "Årlig total",                 en: "Yearly total" },
   coolingTitle:       { da: "Afkøling – Fjernvarme",      en: "Cooling – District Heating" },
-  coolingSub:         { da: "Overvåg afkøling per måler eller samlet. Afkøling = MWh/m³ × 860. Gode værdier reducerer motivationstariffen.",
-                        en: "Monitor cooling per meter or aggregated. Cooling = MWh/m³ × 860. Good values reduce the motivational tariff." },
+  coolingSub:         { da: "Overvåg afkøling per måler eller samlet. Afkøling = MWh/m³ × 860. Gode værdier reducerer HOFORs motivationstarif.",
+                        en: "Monitor cooling per meter or aggregated. Cooling = MWh/m³ × 860. Good values reduce HOFOR's motivational tariff." },
   avgCooling:         { da: "Gns. Afkøling",              en: "Avg. Cooling" },
   avgReturn:          { da: "Gns. Returtemp.",             en: "Avg. Return Temp." },
-  totalCons:          { da: "Samlet Forbrug",              en: "Total Consumption" },
+  totalCons:          { da: "Samlet Energiforbrug",        en: "Total Energy Consumption" },
   status:             { da: "Status",                      en: "Status" },
   aboveReq:           { da: "Over krav",                   en: "Above requirement" },
   belowReq:           { da: "Under krav",                  en: "Below requirement" },
   goodReturn:         { da: "God retur",                   en: "Good return" },
   canImprove:         { da: "Kan forbedres",               en: "Can be improved" },
   bonus:              { da: "Bonus",                       en: "Bonus" },
-  surcharge:          { da: "Merudg.",                     en: "Surcharge" },
+  surcharge:          { da: "Tillæg",                      en: "Surcharge" },
   expectedBonus:      { da: "Forventet bonus",             en: "Expected bonus" },
   riskSurcharge:      { da: "Risiko for tillæg",           en: "Risk of surcharge" },
   chartTitle:         { da: "Fremløb, Retur & Afkøling",  en: "Supply, Return & Cooling" },
@@ -89,14 +101,14 @@ const dict = {
   coolingLine:        { da: "Afkøling (°C)",               en: "Cooling (°C)" },
   coolingArea:        { da: "Afkøling (område)",           en: "Cooling (area)" },
   energyCons:         { da: "Energiforbrug (MWh)",         en: "Energy Consumption (MWh)" },
-  consBar:            { da: "Forbrug (MWh)",               en: "Consumption (MWh)" },
+  consBar:            { da: "Energiforbrug (MWh)",         en: "Energy Consumption (MWh)" },
   coolingTable:       { da: "Afkølingsdata",               en: "Cooling Data" },
   period:             { da: "Periode",                     en: "Period" },
   supply:             { da: "Fremløb (°C)",                en: "Supply (°C)" },
   returnT:            { da: "Retur (°C)",                  en: "Return (°C)" },
   coolingC:           { da: "Afkøling (°C)",               en: "Cooling (°C)" },
   volume:             { da: "Volumen (m³)",                en: "Volume (m³)" },
-  consCol:            { da: "Forbrug (MWh)",               en: "Consumption (MWh)" },
+  consCol:            { da: "Energiforbrug (MWh)",         en: "Energy Consumption (MWh)" },
   allMeters:          { da: "Alle målere (samlet)",        en: "All meters (aggregated)" },
   blockA:             { da: "Blok A – Måler 001",          en: "Block A – Meter 001" },
   blockB:             { da: "Blok B – Måler 002",          en: "Block B – Meter 002" },
@@ -127,8 +139,64 @@ const dict = {
   dataTable:          { da: "Datatabel",                   en: "Data table" },
   footerL:            { da: "homii – Prototype Dashboard | Kamstrup Metering Integration",
                         en: "homii – Prototype Dashboard | Kamstrup Metering Integration" },
-  footerR:            { da: "Data: Simuleret demo-data | © 2025 homii",
-                        en: "Data: Simulated demo data | © 2025 homii" },
+  footerR:            { da: "Data: Simuleret demo-data | © 2026 homii",
+                        en: "Data: Simulated demo data | © 2026 homii" },
+  // Tariff simulator
+  tariffTitle:        { da: "HOFOR Motivationstarif – Beregner", en: "HOFOR Motivational Tariff – Calculator" },
+  tariffSub:          { da: "Simulér den økonomiske effekt af afkølingsforbedringer. Korrektion: 0,8% af energiprisen per grad afvigelse.",
+                        en: "Simulate the financial impact of cooling improvements. Correction: 0.8% of energy price per degree deviation." },
+  zone:               { da: "Zone:",                       en: "Zone:" },
+  annualEnergy:       { da: "Årligt energiforbrug",        en: "Annual energy consumption" },
+  effektbetaling:     { da: "Effektbetaling",              en: "Capacity charge" },
+  energipris:         { da: "Energipris",                  en: "Energy price" },
+  afkKorrektion:      { da: "Afkølingskorrektion",         en: "Cooling correction" },
+  totalCost:          { da: "Samlet årlig omkostning",      en: "Total annual cost" },
+  whatIf:             { da: "Hvad hvis afkøling forbedres med", en: "What if cooling improves by" },
+  potentialSaving:    { da: "Potentiel årlig besparelse",   en: "Potential annual saving" },
+  currentCooling:     { da: "Aktuel afkøling",             en: "Current cooling" },
+  improvedCooling:    { da: "Forbedret afkøling",          en: "Improved cooling" },
+  thresholdChange:    { da: "Krav steg fra 29°C (2025) til 30°C (2026)", en: "Requirement rose from 29°C (2025) to 30°C (2026)" },
+  // EPC
+  epcLabel:           { da: "Energimærkning",              en: "Energy Label" },
+  epcReq:             { da: "Krav: B inden 2030",          en: "Required: B by 2030" },
+  epcMonths:          { da: "mdr. til frist",              en: "months to deadline" },
+  // Legionella
+  legionellaTitle:    { da: "Legionella – Overvågning & Compliance", en: "Legionella – Monitoring & Compliance" },
+  legionellaSub:      { da: "Overvåg varmtvandstemperaturer for at sikre legionellaforebyggelse. Lovkrav: min. 50°C ved fjerneste tapsted. Anbefalet: 55–60°C i varmtvandsbeholder.",
+                        en: "Monitor hot water temperatures to ensure legionella prevention. Legal requirement: min. 50°C at furthest tap point. Recommended: 55–60°C in hot water tank." },
+  currentTemp:        { da: "Aktuel Temp.",                en: "Current Temp." },
+  minTemp24h:         { da: "Min. Temp. (24t)",            en: "Min. Temp. (24h)" },
+  daysSinceDisinf:    { da: "Dage siden desinfektion",     en: "Days since disinfection" },
+  compliancePct:      { da: "Compliance",                  en: "Compliance" },
+  hwTempTitle:        { da: "Varmtvandstemperatur – Seneste 30 dage", en: "Hot Water Temperature – Last 30 Days" },
+  tankTemp:           { da: "Beholder (°C)",               en: "Tank (°C)" },
+  tapTemp:            { da: "Tapsted (°C)",                en: "Tap point (°C)" },
+  legalMin:           { da: "Lovkrav (50°C)",              en: "Legal min. (50°C)" },
+  recommended:        { da: "Anbefalet (55°C)",            en: "Recommended (55°C)" },
+  disinfLog:          { da: "Termisk desinfektion – Log",  en: "Thermal Disinfection – Log" },
+  disinfDate:         { da: "Dato",                        en: "Date" },
+  disinfDuration:     { da: "Varighed",                    en: "Duration" },
+  disinfPeakTemp:     { da: "Maks. temp.",                 en: "Peak temp." },
+  disinfResult:       { da: "Resultat",                    en: "Result" },
+  disinfOk:           { da: "Godkendt",                    en: "Passed" },
+  disinfFail:         { da: "Utilstrækkelig",              en: "Insufficient" },
+  riskLevel:          { da: "Risikoniveau",                en: "Risk Level" },
+  riskLow:            { da: "Lav risiko",                  en: "Low risk" },
+  riskMedium:         { da: "Moderat risiko",              en: "Moderate risk" },
+  riskHigh:           { da: "Høj risiko",                  en: "High risk" },
+  aboveLegal:         { da: "Over lovkrav",                en: "Above legal min." },
+  belowLegal:         { da: "Under lovkrav",               en: "Below legal min." },
+  aboveRec:           { da: "Over anbefaling",             en: "Above recommended" },
+  dangerZone:         { da: "Farezonen: 25–45°C",          en: "Danger zone: 25–45°C" },
+  tempGauge:          { da: "Temperaturstatus",            en: "Temperature Status" },
+  selectBuilding:     { da: "Vælg bygning:",               en: "Select building:" },
+  bldgAll:            { da: "Alle bygninger (samlet)",     en: "All buildings (aggregated)" },
+  bldgA:              { da: "Blok A – Beholder 1",         en: "Block A – Tank 1" },
+  bldgB:              { da: "Blok B – Beholder 2",         en: "Block B – Tank 2" },
+  bldgC:              { da: "Blok C – Beholder 3",         en: "Block C – Tank 3" },
+  minutes:            { da: "min",                         en: "min" },
+  compliant:          { da: "I overensstemmelse",          en: "Compliant" },
+  nonCompliant:       { da: "Ikke i overensstemmelse",     en: "Non-compliant" },
 };
 
 const i = (k, lang) => dict[k]?.[lang] || dict[k]?.en || k;
@@ -148,7 +216,7 @@ const HomiiIcon = ({ size = 28, color = brand.blue }) => (
 );
 
 /* ═══════════════════════════════════════════════════════
-   Mock data
+   Mock data generators
    ═══════════════════════════════════════════════════════ */
 const GK = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
 const GN = { Jan:480,Feb:410,Mar:340,Apr:210,Maj:100,Jun:30,Jul:8,Aug:15,Sep:80,Okt:230,Nov:360,Dec:460 };
@@ -169,6 +237,37 @@ function mkGraddage() {
 
 function mkBar(lang) {
   return MS[lang].map((m,mi)=>{const e={name:m};[2021,2022,2023,2024,2025].forEach(y=>{e[`h${y}`]=+(mi<3||mi>9?120+Math.sin(y+mi)*30:25+Math.sin(y+mi)*15).toFixed(1);e[`e${y}`]=+(45+Math.sin(y*2+mi)*12).toFixed(1);e[`w${y}`]=+(800+Math.sin(y+mi*2)*200).toFixed(0);});return e;});
+}
+
+function mkLegionella(building) {
+  const seed = building === "all" ? 7 : building.charCodeAt(building.length - 1);
+  const r = (n) => Math.sin(seed * 100 + n * 13) * 0.5 + 0.5;
+  // 30-day temperature data
+  const days = Array.from({ length: 30 }, (_, n) => {
+    const day = 30 - n;
+    const baseT = 56 + r(n) * 6; // tank: 56-62°C
+    const tapDrop = 4 + r(n + 50) * 5; // tap is 4-9°C lower
+    const dip = n === 12 || n === 22 ? -8 * r(n + 200) : 0; // occasional dips
+    return {
+      name: `D-${day}`,
+      day,
+      tank: +(baseT + dip).toFixed(1),
+      tap: +(baseT - tapDrop + dip * 0.7).toFixed(1),
+    };
+  }).reverse();
+  // Disinfection log
+  const disinfections = [
+    { date: "2026-02-18", duration: 45, peakTemp: 65.2, ok: true },
+    { date: "2026-02-04", duration: 40, peakTemp: 62.8, ok: true },
+    { date: "2026-01-21", duration: 35, peakTemp: 58.1, ok: false },
+    { date: "2026-01-07", duration: 50, peakTemp: 66.4, ok: true },
+    { date: "2025-12-23", duration: 42, peakTemp: 63.5, ok: true },
+  ];
+  const currentTank = days[days.length - 1].tank;
+  const currentTap = days[days.length - 1].tap;
+  const minTap24h = Math.min(...days.slice(-1).map(d => d.tap), ...days.slice(-3).map(d => d.tap));
+  const complianceHours = days.filter(d => d.tap >= 50).length;
+  return { days, disinfections, currentTank, currentTap, minTap24h, compliancePct: +((complianceHours / days.length) * 100).toFixed(0) };
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -207,17 +306,64 @@ const YearChip = ({year,active,onClick}) => (
 );
 
 /* ═══════════════════════════════════════════════════════
-   Dashboard 1 – Cooling
+   EPC Badge Component
+   ═══════════════════════════════════════════════════════ */
+const EPC_COLORS = { A: "#16A34A", B: "#22C55E", C: "#F5A623", D: "#F97316", E: "#EF4444", F: "#DC2626", G: "#991B1B" };
+
+function EpcBadge({ rating = "C", lang }) {
+  const monthsTo2030 = useMemo(() => {
+    const now = new Date();
+    const deadline = new Date(2030, 0, 1);
+    return Math.max(0, Math.round((deadline - now) / (1000 * 60 * 60 * 24 * 30.44)));
+  }, []);
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 rounded-md px-2 py-1" style={{ background: "rgba(255,255,255,0.1)" }}>
+        <div className="w-6 h-6 rounded flex items-center justify-center text-xs font-extrabold text-white" style={{ background: EPC_COLORS[rating] }}>
+          {rating}
+        </div>
+        <div className="text-[10px] leading-tight">
+          <div className="text-white/80 font-medium">{i("epcLabel", lang)}</div>
+          <div className="text-white/50">{i("epcReq", lang)} · {monthsTo2030} {i("epcMonths", lang)}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   Dashboard 1 – Cooling (Afkøling) + Tariff Simulator
    ═══════════════════════════════════════════════════════ */
 function CoolingDash() {
   const lang = useLang();
   const [period,setPeriod] = useState("monthly");
   const [meter,setMeter] = useState("all");
+  const [zone, setZone] = useState("standard");
+  const [improveDeg, setImproveDeg] = useState(0);
   const data = useMemo(()=>mkCooling(period,meter,lang),[period,meter,lang]);
 
+  const hoforZone = HOFOR[zone];
+  const thr = hoforZone.krav;
+
   const avg = (k) => +(data.reduce((s,d)=>s+d[k],0)/data.length).toFixed(1);
-  const avgC = avg("cooling"), avgR = avg("return"), totMWh = data.reduce((s,d)=>s+d.mwh,0).toFixed(1);
-  const thr = 29, ok = avgC >= thr;
+  const avgC = avg("cooling"), avgR = avg("return"), totMWh = +data.reduce((s,d)=>s+d.mwh,0).toFixed(1);
+  const ok = avgC >= thr;
+
+  // Tariff calculation
+  const annualMWh = period === "yearly" ? totMWh : totMWh * (period === "weekly" ? 1 : 1);
+  const estimatedMWh = period === "monthly" ? totMWh : (period === "weekly" ? totMWh / 52 * 12 : totMWh);
+  const energiCost = estimatedMWh * HOFOR.energiprisPerMWh;
+  const effektCost = 8500 * HOFOR.effektbetalingPerM2; // 8500 m² typical social housing
+  const deviation = avgC - thr;
+  const deviationImproved = (avgC + improveDeg) - thr;
+  const beyondNeutral = deviation > 5 ? deviation - 5 : deviation < -5 ? deviation + 5 : 0;
+  const beyondNeutralImproved = deviationImproved > 5 ? deviationImproved - 5 : deviationImproved < -5 ? deviationImproved + 5 : 0;
+  const korrektion = beyondNeutral * HOFOR.korrektionPct * energiCost;
+  const korrektionImproved = beyondNeutralImproved * HOFOR.korrektionPct * energiCost;
+  const totalCost = effektCost + energiCost - korrektion;
+  const totalCostImproved = effektCost + energiCost - korrektionImproved;
+  const saving = totalCost - totalCostImproved;
 
   const meters = [
     {id:"all",      l:i("allMeters",lang)},
@@ -226,6 +372,8 @@ function CoolingDash() {
     {id:"meter-003",l:i("blockC",lang)},
     {id:"meter-004",l:i("blockD",lang)},
   ];
+
+  const fmtDKK = (v) => v.toLocaleString(lang==="da"?"da-DK":"en-US", { style: "currency", currency: "DKK", maximumFractionDigits: 0 });
 
   return (
     <div className="space-y-6">
@@ -255,6 +403,75 @@ function CoolingDash() {
         <KpiCard label={i("totalCons",lang)} value={totMWh} unit="MWh"/>
         <KpiCard label={i("status",lang)} value={ok?i("bonus",lang):i("surcharge",lang)} unit="" trend={ok?i("expectedBonus",lang):i("riskSurcharge",lang)} good={ok}/>
       </div>
+
+      {/* HOFOR Tariff Simulator */}
+      <Card className="border-2" style={{ borderColor: brand.blue + "40" }}>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-bold" style={{color:brand.navy}}>{i("tariffTitle",lang)}</CardTitle>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{i("zone",lang)}</span>
+              <ToggleGroup type="single" value={zone} onValueChange={v=>v&&setZone(v)}>
+                <ToggleGroupItem value="standard">Standard</ToggleGroupItem>
+                <ToggleGroupItem value="vesterbro">Vesterbro</ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{i("tariffSub",lang)}</p>
+          <p className="text-[11px] mt-1 font-medium" style={{ color: brand.amber }}>{i("thresholdChange",lang)}</p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: cost breakdown */}
+            <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{i("effektbetaling",lang)} (8.500 m²)</span>
+                <span className="font-semibold">{fmtDKK(effektCost)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{i("energipris",lang)} ({estimatedMWh.toFixed(0)} MWh × {HOFOR.energiprisPerMWh} DKK)</span>
+                <span className="font-semibold">{fmtDKK(energiCost)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{i("afkKorrektion",lang)} ({beyondNeutral > 0 ? "+" : ""}{beyondNeutral.toFixed(1)}° × 0,8%)</span>
+                <span className={`font-semibold ${korrektion > 0 ? "text-emerald-600" : korrektion < 0 ? "text-red-500" : ""}`}>
+                  {korrektion > 0 ? "−" : korrektion < 0 ? "+" : ""}{fmtDKK(Math.abs(korrektion))}
+                </span>
+              </div>
+              <div className="border-t pt-2 flex justify-between text-sm">
+                <span className="font-bold" style={{ color: brand.navy }}>{i("totalCost",lang)}</span>
+                <span className="font-extrabold text-lg" style={{ color: brand.navy }}>{fmtDKK(totalCost)}</span>
+              </div>
+            </div>
+            {/* Right: what-if slider */}
+            <div className="space-y-3 rounded-lg p-4" style={{ background: brand.navy + "08" }}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium" style={{ color: brand.navy }}>{i("whatIf",lang)}</span>
+                <span className="text-lg font-extrabold" style={{ color: brand.blue }}>+{improveDeg}°C</span>
+              </div>
+              <input
+                type="range" min="0" max="10" step="1" value={improveDeg}
+                onChange={e => setImproveDeg(+e.target.value)}
+                className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+                style={{
+                  background: `linear-gradient(to right, ${brand.blue} ${improveDeg * 10}%, #e2e8f0 ${improveDeg * 10}%)`,
+                  accentColor: brand.blue,
+                }}
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{i("currentCooling",lang)}: {avgC.toFixed(1)}°C</span>
+                <span>{i("improvedCooling",lang)}: {(avgC + improveDeg).toFixed(1)}°C</span>
+              </div>
+              {improveDeg > 0 && (
+                <div className="rounded-lg p-3 text-center" style={{ background: brand.green + "20" }}>
+                  <p className="text-xs text-muted-foreground">{i("potentialSaving",lang)}</p>
+                  <p className="text-2xl font-extrabold text-emerald-600">{fmtDKK(Math.max(0, saving))}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Line chart */}
       <Card>
@@ -374,7 +591,6 @@ function GraddageDash() {
         </div>
       )}
 
-      {/* GAF bar chart */}
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm font-bold" style={{color:brand.navy}}>{view==="monthly"?i("gafMonthly",lang):i("gafYearly",lang)}</CardTitle></CardHeader>
         <CardContent>
@@ -399,7 +615,6 @@ function GraddageDash() {
         </CardContent>
       </Card>
 
-      {/* Degree-day line chart */}
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm font-bold" style={{color:brand.navy}}>{i("ddVsNormal",lang)}</CardTitle></CardHeader>
         <CardContent>
@@ -415,7 +630,6 @@ function GraddageDash() {
         </CardContent>
       </Card>
 
-      {/* Table */}
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm font-bold" style={{color:brand.navy}}>{i("ddTable",lang)}</CardTitle></CardHeader>
         <CardContent className="overflow-x-auto">
@@ -452,7 +666,160 @@ function GraddageDash() {
 }
 
 /* ═══════════════════════════════════════════════════════
-   Dashboard 3 – Bar Charts
+   Dashboard 3 – Legionella Compliance Monitor
+   ═══════════════════════════════════════════════════════ */
+function LegionellaDash() {
+  const lang = useLang();
+  const [building, setBuilding] = useState("all");
+  const lData = useMemo(() => mkLegionella(building), [building]);
+
+  const buildings = [
+    { id: "all",  l: i("bldgAll", lang) },
+    { id: "bldg-A", l: i("bldgA", lang) },
+    { id: "bldg-B", l: i("bldgB", lang) },
+    { id: "bldg-C", l: i("bldgC", lang) },
+  ];
+
+  const riskLevel = lData.currentTap >= 55 ? "low" : lData.currentTap >= 50 ? "medium" : "high";
+  const riskColor = { low: brand.green, medium: brand.amber, high: brand.red }[riskLevel];
+  const riskLabel = { low: i("riskLow", lang), medium: i("riskMedium", lang), high: i("riskHigh", lang) }[riskLevel];
+
+  // Temperature gauge segments
+  const GaugeBar = () => {
+    const temp = lData.currentTap;
+    const pct = Math.min(100, Math.max(0, ((temp - 20) / 50) * 100));
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>20°C</span>
+          <span className="font-semibold" style={{ color: brand.navy }}>{i("tempGauge", lang)}</span>
+          <span>70°C</span>
+        </div>
+        <div className="relative h-6 rounded-full overflow-hidden bg-slate-100">
+          {/* Danger zone (25-45°C) */}
+          <div className="absolute h-full opacity-15" style={{ left: "10%", width: "40%", background: brand.red }} />
+          {/* Legal min marker (50°C) */}
+          <div className="absolute h-full w-0.5 bg-red-500 z-10" style={{ left: "60%" }} />
+          {/* Recommended marker (55°C) */}
+          <div className="absolute h-full w-0.5 z-10" style={{ left: "70%", background: brand.amber }} />
+          {/* Current temp fill */}
+          <div className="absolute h-full rounded-full transition-all duration-500" style={{
+            width: `${pct}%`,
+            background: `linear-gradient(to right, ${brand.red}, ${brand.amber}, ${brand.green})`,
+            opacity: 0.7,
+          }} />
+          {/* Current temp indicator */}
+          <div className="absolute top-0 h-full w-1 bg-white z-20 shadow-md" style={{ left: `${pct}%` }}>
+            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold whitespace-nowrap px-1 rounded" style={{ background: riskColor, color: "#fff" }}>
+              {temp}°C
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-between text-[10px] text-muted-foreground">
+          <span style={{ marginLeft: "10%" }}>{i("dangerZone", lang)}</span>
+          <span style={{ marginLeft: "5%" }}>50°C {lang === "da" ? "lovkrav" : "legal min"}</span>
+          <span>55°C {lang === "da" ? "anbef." : "rec."}</span>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-extrabold" style={{ color: brand.navy }}>{i("legionellaTitle", lang)}</h2>
+          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">{i("legionellaSub", lang)}</p>
+        </div>
+        <Select value={building} onValueChange={setBuilding}>
+          <SelectTrigger className="w-[240px]"><SelectValue /></SelectTrigger>
+          <SelectContent>{buildings.map(b => <SelectItem key={b.id} value={b.id}>{b.l}</SelectItem>)}</SelectContent>
+        </Select>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard label={i("currentTemp", lang)} value={lData.currentTap} unit="°C"
+          trend={lData.currentTap >= 50 ? i("aboveLegal", lang) : i("belowLegal", lang)} good={lData.currentTap >= 50} />
+        <KpiCard label={i("minTemp24h", lang)} value={lData.minTap24h} unit="°C"
+          trend={lData.minTap24h >= 50 ? i("compliant", lang) : i("nonCompliant", lang)} good={lData.minTap24h >= 50} />
+        <KpiCard label={i("daysSinceDisinf", lang)} value={6} unit={lang === "da" ? "dage" : "days"}
+          trend={6 <= 14 ? i("compliant", lang) : i("canImprove", lang)} good={6 <= 14} />
+        <Card className="text-center">
+          <CardContent className="pt-5 pb-4 px-4">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">{i("riskLevel", lang)}</p>
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ background: riskColor }} />
+              <p className="text-xl font-extrabold" style={{ color: riskColor }}>{riskLabel}</p>
+            </div>
+            <p className="text-xs mt-1 text-muted-foreground">{i("compliancePct", lang)}: {lData.compliancePct}%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Temperature Gauge */}
+      <Card>
+        <CardContent className="pt-5 pb-4">
+          <GaugeBar />
+        </CardContent>
+      </Card>
+
+      {/* Temperature Timeline */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm font-bold" style={{ color: brand.navy }}>{i("hwTempTitle", lang)}</CardTitle></CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={lData.days} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 11 }} unit="°C" domain={[35, 70]} />
+              <Tooltip content={<BrandTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <ReferenceLine y={50} stroke={brand.red} strokeDasharray="6 4" strokeWidth={2} label={{ value: "50°C", fill: brand.red, fontSize: 10, position: "right" }} />
+              <ReferenceLine y={55} stroke={brand.amber} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: "55°C", fill: brand.amber, fontSize: 10, position: "right" }} />
+              <Area type="monotone" dataKey="tank" fill={brand.blue} fillOpacity={0.06} stroke="none" />
+              <Line type="monotone" dataKey="tank" stroke={brand.blue} strokeWidth={2} dot={false} name={i("tankTemp", lang)} />
+              <Line type="monotone" dataKey="tap" stroke={brand.amber} strokeWidth={2} dot={{ r: 2 }} name={i("tapTemp", lang)} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Disinfection Log */}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm font-bold" style={{ color: brand.navy }}>{i("disinfLog", lang)}</CardTitle></CardHeader>
+        <CardContent className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ background: brand.navy }}>
+                {[i("disinfDate", lang), i("disinfDuration", lang), i("disinfPeakTemp", lang), i("disinfResult", lang)].map(h => (
+                  <th key={h} className="text-white font-semibold text-xs px-3 py-2 text-left">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {lData.disinfections.map((d, idx) => (
+                <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                  <td className="px-3 py-1.5 font-semibold" style={{ color: brand.navy }}>{d.date}</td>
+                  <td className="px-3 py-1.5">{d.duration} {i("minutes", lang)}</td>
+                  <td className={`px-3 py-1.5 font-semibold ${d.peakTemp >= 60 ? "text-emerald-600" : "text-red-500"}`}>{d.peakTemp}°C</td>
+                  <td className="px-3 py-1.5">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${d.ok ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                      {d.ok ? i("disinfOk", lang) : i("disinfFail", lang)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   Dashboard 4 – Bar Charts (Forbrug)
    ═══════════════════════════════════════════════════════ */
 function BarDash() {
   const lang = useLang();
@@ -501,7 +868,6 @@ function BarDash() {
         )}
       </div>
 
-      {/* Chart */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-bold" style={{color:brand.navy}}>
@@ -531,7 +897,6 @@ function BarDash() {
         </CardContent>
       </Card>
 
-      {/* Table */}
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm font-bold" style={{color:brand.navy}}>{rLbl} – {i("dataTable",lang)} ({uLbl})</CardTitle></CardHeader>
         <CardContent className="overflow-x-auto">
@@ -580,6 +945,7 @@ export default function HomiiEnergyDashboard() {
             <span className="text-sm ml-2 opacity-80" style={{color:brand.blue}}>| {i("energyDashboard",lang)}</span>
           </div>
           <div className="flex items-center gap-4">
+            <EpcBadge rating="C" lang={lang} />
             {/* Lang toggle */}
             <div className="inline-flex rounded-md overflow-hidden border" style={{borderColor:brand.midBlue}}>
               {["da","en"].map(l=>(
@@ -604,6 +970,9 @@ export default function HomiiEnergyDashboard() {
               <TabsTrigger value="graddage" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#3EB1C8] data-[state=active]:shadow-none px-5 text-sm">
                 <span className="mr-1.5">&#128202;</span>{i("tabGraddage",lang)}
               </TabsTrigger>
+              <TabsTrigger value="legionella" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#3EB1C8] data-[state=active]:shadow-none px-5 text-sm">
+                <span className="mr-1.5">&#129440;</span>{i("tabLegionella",lang)}
+              </TabsTrigger>
               <TabsTrigger value="consumption" className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#3EB1C8] data-[state=active]:shadow-none px-5 text-sm">
                 <span className="mr-1.5">&#128200;</span>{i("tabConsumption",lang)}
               </TabsTrigger>
@@ -613,6 +982,7 @@ export default function HomiiEnergyDashboard() {
           <main className="max-w-6xl mx-auto px-8 py-7">
             <TabsContent value="cooling"><CoolingDash/></TabsContent>
             <TabsContent value="graddage"><GraddageDash/></TabsContent>
+            <TabsContent value="legionella"><LegionellaDash/></TabsContent>
             <TabsContent value="consumption"><BarDash/></TabsContent>
           </main>
         </Tabs>
