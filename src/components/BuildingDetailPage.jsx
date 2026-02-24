@@ -7,6 +7,7 @@ import { brand, EPC_COLORS } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
 import { buildings } from "@/lib/mockData";
 import Breadcrumbs from "./Breadcrumbs";
+import SmartInsights from "./SmartInsights";
 
 const serviceIcons = { fjernvarme: Flame, vand: Droplets, el: Zap };
 const serviceColors = { fjernvarme: "#EF4444", vand: "#3B82F6", el: "#F59E0B" };
@@ -122,6 +123,7 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
                 <span className="text-2xl font-bold tabular-nums" style={{ color: brand.navy }}>{building.services.length}</span>
               </CardContent></Card>
             </div>
+            <SmartInsights building={building} />
           </TabsContent>
 
           {/* Placeholder tabs */}
