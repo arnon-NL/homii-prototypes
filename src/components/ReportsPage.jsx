@@ -66,8 +66,8 @@ export default function ReportsPage({ onNavigate, reportId }) {
               {t("back", lang)}
             </button>
           </div>
-          {reportId === "cooling" && <CoolingReport />}
-          {reportId === "legionella" && <LegionellaReport />}
+          {reportId === "cooling" && <CoolingReport onNavigate={onNavigate} />}
+          {reportId === "legionella" && <LegionellaReport onNavigate={onNavigate} />}
           {reportId === "epc" && (
             <div className="space-y-4">
               <div className="text-center py-12 text-slate-400">

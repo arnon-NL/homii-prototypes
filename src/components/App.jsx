@@ -5,6 +5,7 @@ import { brand } from "@/lib/brand";
 import { t } from "@/lib/i18n";
 
 import Sidebar from "./Sidebar";
+import HomePage from "./HomePage";
 import BuildingListPage from "./BuildingListPage";
 import BuildingDetailPage from "./BuildingDetailPage";
 import MeterDetailPage from "./MeterDetailPage";
@@ -23,7 +24,7 @@ const placeholderIcons = {
 
 export default function App() {
   const [lang, setLang] = useState("da");
-  const [navState, setNavState] = useState({ page: "buildings" });
+  const [navState, setNavState] = useState({ page: "home" });
 
   const navigate = useCallback((state) => {
     setNavState(state);
@@ -31,6 +32,8 @@ export default function App() {
 
   const renderPage = () => {
     switch (navState.page) {
+      case "home":
+        return <HomePage onNavigate={navigate} />;
       case "buildings":
         return <BuildingListPage onNavigate={navigate} />;
       case "building-detail":

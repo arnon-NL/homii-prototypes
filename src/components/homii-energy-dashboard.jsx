@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 
 import { brand, yearColor, HOFOR, Icon } from "@/lib/brand";
 import { useLang, t, MS, ML } from "@/lib/i18n";
+import { meters as allMeters, buildings, getBuilding } from "@/lib/mockData";
 
 /* ═══════════════════════════════════════════════════════
    Custom SegmentedControl (Notion-style)
@@ -618,7 +619,7 @@ function TariffDash() {
 /* ═══════════════════════════════════════════════════════
    Exported Reports — for the Reports page
    ═══════════════════════════════════════════════════════ */
-export function CoolingReport() {
+export function CoolingReport({ onNavigate }) {
   const lang = useLang();
   const [period, setPeriod] = useState("monthly");
   const [meter, setMeter] = useState("all");
@@ -633,27 +634,56 @@ export function CoolingReport() {
   const afkOk = avgAfk <= thr;
   const ok = avgC >= thr;
 
+  // Use actual fjernvarme meters from mockData
+  const fjernvarmeMeters = allMeters.filter(m => m.type === "fjernvarme");
   const meters = [
-    {id:"all",      l:t("allMeters",lang)},
-    {id:"meter-001",l:t("blockA",lang)},
-    {id:"meter-002",l:t("blockB",lang)},
-    {id:"meter-003",l:t("blockC",lang)},
-    {id:"meter-004",l:t("blockD",lang)},
+    { id: "all", l: t("allMeters", lang) },
+    ...fjernvarmeMeters.map(m => {
+      const bldg = getBuilding(m.buildingId);
+      return { id: m.id, l: `${m.id} — ${bldg?.name || m.buildingId}`, meterId: m.id };
+    }),
   ];
 
   return (
     <div className="space-y-5">
       <SectionHeader title={t("coolingTitle",lang)} description={t("coolingSub",lang)}>
         <Select value={meter} onValueChange={setMeter}>
-          <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue/></SelectTrigger>
+          <SelectTrigger className="w-[260px] h-8 text-xs"><SelectValue/></SelectTrigger>
           <SelectContent>{meters.map(m=><SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}</SelectContent>
         </Select>
+        {meter !== "all" && onNavigate && (
+          <button
+            onClick={() => onNavigate({ page: "meter-detail", meterId: meter })}
+            className="text-[11px] font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors"
+            style={{ color: brand.blue }}
+          >
+            {lang === "da" ? "Åbn måler →" : "Open meter →"}
+          </button>
+        )}
         <SegmentedControl value={period} onChange={v=>v&&setPeriod(v)} options={[
           {value:"weekly", label:t("weekly",lang)},
           {value:"monthly", label:t("monthly",lang)},
           {value:"yearly", label:t("yearly",lang)},
         ]} />
       </SectionHeader>
+
+      {/* Meter selection grid */}
+      <div className="flex flex-wrap gap-2">
+        {meters.map(m => (
+          <button
+            key={m.id}
+            onClick={() => setMeter(m.id)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+              meter === m.id
+                ? "bg-white shadow-sm border-slate-200 text-slate-900"
+                : "bg-transparent border-transparent text-slate-500 hover:bg-slate-100"
+            }`}
+          >
+            {m.id !== "all" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+            {m.l}
+          </button>
+        ))}
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <Metric label={t("afkoelingKpi",lang)} value={avgAfk} unit={t("afkoelingUnit",lang)}
@@ -744,18 +774,21 @@ export function CoolingReport() {
   );
 }
 
-export function LegionellaReport() {
+export function LegionellaReport({ onNavigate }) {
   const lang = useLang();
-  const [building, setBuilding] = useState("all");
-  const lData = useMemo(() => mkLegionella(building), [building]);
+  const fjernvarmeMeters = allMeters.filter(m => m.type === "fjernvarme");
+  const [selectedMeter, setSelectedMeter] = useState("all");
+  const lData = useMemo(() => mkLegionella(selectedMeter), [selectedMeter]);
 
-  const bldgs = [
-    { id: "all",    l: t("bldgAll", lang) },
-    { id: "bldg-A", l: t("bldgA", lang) },
-    { id: "bldg-B", l: t("bldgB", lang) },
-    { id: "bldg-C", l: t("bldgC", lang) },
+  const meterOptions = [
+    { id: "all", l: lang === "da" ? "Alle fjernvarmemålere (samlet)" : "All DH meters (aggregated)" },
+    ...fjernvarmeMeters.map(m => {
+      const bldg = getBuilding(m.buildingId);
+      return { id: m.id, l: `${m.id} — ${bldg?.name || m.buildingId}` };
+    }),
   ];
 
+  // Reinterpret: "tank" = supply/circulation temp from meter, "tap" = return temp at furthest point
   const riskLevel = lData.currentTap >= 55 ? "low" : lData.currentTap >= 50 ? "medium" : "high";
   const riskColor = { low: brand.green, medium: brand.amber, high: brand.red }[riskLevel];
   const riskLabel = { low: t("riskLow", lang), medium: t("riskMedium", lang), high: t("riskHigh", lang) }[riskLevel];
@@ -796,18 +829,58 @@ export function LegionellaReport() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader title={t("legionellaTitle",lang)} description={t("legionellaSub",lang)}>
-        <Select value={building} onValueChange={setBuilding}>
-          <SelectTrigger className="w-[220px] h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>{bldgs.map(b => <SelectItem key={b.id} value={b.id}>{b.l}</SelectItem>)}</SelectContent>
+      <SectionHeader
+        title={lang === "da" ? "Legionella – Temperaturovervågning" : "Legionella – Temperature Monitoring"}
+        description={lang === "da"
+          ? "Legionellarisiko overvåges via returtemperatur på fjernvarmemålere. Når cirkulationstemperaturen falder under 50°C opstår risiko for legionellavækst. Samme målere der registrerer afkøling bruges til temperaturalarm."
+          : "Legionella risk is monitored via return temperature on district heating meters. When circulation temperature drops below 50°C, legionella growth risk occurs. The same meters that register cooling are used for temperature alerts."}
+      >
+        <Select value={selectedMeter} onValueChange={setSelectedMeter}>
+          <SelectTrigger className="w-[280px] h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>{meterOptions.map(m => <SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}</SelectContent>
         </Select>
+        {selectedMeter !== "all" && onNavigate && (
+          <button
+            onClick={() => onNavigate({ page: "meter-detail", meterId: selectedMeter })}
+            className="text-[11px] font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors"
+            style={{ color: brand.blue }}
+          >
+            {lang === "da" ? "Åbn måler →" : "Open meter →"}
+          </button>
+        )}
       </SectionHeader>
 
+      {/* Meter selection chips */}
+      <div className="flex flex-wrap gap-2">
+        {meterOptions.map(m => (
+          <button
+            key={m.id}
+            onClick={() => setSelectedMeter(m.id)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+              selectedMeter === m.id
+                ? "bg-white shadow-sm border-slate-200 text-slate-900"
+                : "bg-transparent border-transparent text-slate-500 hover:bg-slate-100"
+            }`}
+          >
+            {m.id !== "all" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
+            {m.l}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Metric label={t("currentTemp", lang)} value={lData.currentTap} unit="°C"
-          sub={lData.currentTap >= 50 ? t("aboveLegal", lang) : t("belowLegal", lang)} status={lData.currentTap >= 50 ? "good" : "bad"} />
-        <Metric label={t("minTemp24h", lang)} value={lData.minTap24h} unit="°C"
-          sub={lData.minTap24h >= 50 ? t("compliant", lang) : t("nonCompliant", lang)} status={lData.minTap24h >= 50 ? "good" : "bad"} />
+        <Metric
+          label={lang === "da" ? "Cirkulationstemperatur" : "Circulation Temp."}
+          value={lData.currentTank} unit="°C"
+          sub={lData.currentTank >= 55 ? t("aboveRec", lang) : lData.currentTank >= 50 ? t("aboveLegal", lang) : t("belowLegal", lang)}
+          status={lData.currentTank >= 55 ? "good" : lData.currentTank >= 50 ? "warn" : "bad"}
+        />
+        <Metric
+          label={lang === "da" ? "Returtemperatur (min. 24t)" : "Return Temp. (min. 24h)"}
+          value={lData.minTap24h} unit="°C"
+          sub={lData.minTap24h >= 50 ? t("compliant", lang) : t("nonCompliant", lang)}
+          status={lData.minTap24h >= 50 ? "good" : "bad"}
+        />
         <Metric label={t("daysSinceDisinf", lang)} value={6} unit={lang === "da" ? "dage" : "days"}
           sub={t("compliant", lang)} status="good" />
         <Card className="group">
@@ -828,7 +901,12 @@ export function LegionellaReport() {
         </CardContent>
       </Card>
 
-      <SectionCard title={t("hwTempTitle",lang)}>
+      <SectionCard title={lang === "da" ? "Temperatur fra fjernvarmemåler – Seneste 30 dage" : "Temperature from DH Meter – Last 30 Days"}>
+        <p className="text-[11px] text-slate-400 mb-3">
+          {lang === "da"
+            ? "Cirkulationstemperaturen (blå) bør altid være over 55°C. Returtemperaturen (gul) ved fjerneste punkt bør være over 50°C for at forhindre legionella."
+            : "Circulation temperature (blue) should always be above 55°C. Return temperature (yellow) at the furthest point should be above 50°C to prevent legionella."}
+        </p>
         <ResponsiveContainer width="100%" height={280}>
           <ComposedChart data={lData.days} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
@@ -836,13 +914,49 @@ export function LegionellaReport() {
             <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit="°C" domain={[35, 70]} axisLine={false} tickLine={false} />
             <Tooltip content={<BrandTooltip />} />
             <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
-            <ReferenceLine y={50} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{ value: "50°C", fill: brand.red, fontSize: 10, position: "right" }} />
-            <ReferenceLine y={55} stroke={brand.amber} strokeDasharray="4 4" strokeWidth={1} label={{ value: "55°C", fill: brand.amber, fontSize: 10, position: "right" }} />
+            <ReferenceLine y={50} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{ value: "50°C min", fill: brand.red, fontSize: 10, position: "right" }} />
+            <ReferenceLine y={55} stroke={brand.amber} strokeDasharray="4 4" strokeWidth={1} label={{ value: "55°C rec", fill: brand.amber, fontSize: 10, position: "right" }} />
             <Area type="monotone" dataKey="tank" fill={brand.blue} fillOpacity={0.04} stroke="none" />
-            <Line type="monotone" dataKey="tank" stroke={brand.blue} strokeWidth={1.5} dot={false} name={t("tankTemp", lang)} />
-            <Line type="monotone" dataKey="tap" stroke={brand.amber} strokeWidth={1.5} dot={{ r: 2 }} name={t("tapTemp", lang)} />
+            <Line type="monotone" dataKey="tank" stroke={brand.blue} strokeWidth={1.5} dot={false}
+              name={lang === "da" ? "Cirkulation (°C)" : "Circulation (°C)"} />
+            <Line type="monotone" dataKey="tap" stroke={brand.amber} strokeWidth={1.5} dot={{ r: 2 }}
+              name={lang === "da" ? "Returtemp. (°C)" : "Return Temp. (°C)"} />
           </ComposedChart>
         </ResponsiveContainer>
+      </SectionCard>
+
+      {/* Per-meter alert status table */}
+      <SectionCard title={lang === "da" ? "Legionellastatus per fjernvarmemåler" : "Legionella Status per DH Meter"} noPad>
+        <DataTable
+          headers={[
+            lang === "da" ? "Måler" : "Meter",
+            lang === "da" ? "Bygning" : "Building",
+            lang === "da" ? "Cirkulation" : "Circulation",
+            lang === "da" ? "Retur min." : "Return min.",
+            lang === "da" ? "Risiko" : "Risk",
+          ]}
+          rows={fjernvarmeMeters.map((m, idx) => {
+            const bldg = getBuilding(m.buildingId);
+            const mData = mkLegionella(m.id);
+            const mRisk = mData.currentTap >= 55 ? "low" : mData.currentTap >= 50 ? "medium" : "high";
+            const mRiskColor = { low: "bg-emerald-50 text-emerald-600", medium: "bg-amber-50 text-amber-600", high: "bg-red-50 text-red-600" }[mRisk];
+            const mRiskLabel = { low: t("riskLow", lang), medium: t("riskMedium", lang), high: t("riskHigh", lang) }[mRisk];
+            return (
+              <tr key={idx} className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                onClick={() => onNavigate && onNavigate({ page: "meter-detail", meterId: m.id })}>
+                <td className="px-4 py-2.5 text-sm font-medium" style={{ color: brand.blue }}>{m.id}</td>
+                <td className="px-4 py-2.5 text-sm text-slate-500">{bldg?.name || m.buildingId}</td>
+                <td className={`px-4 py-2.5 text-sm text-right tabular-nums font-medium ${mData.currentTank >= 55 ? "text-emerald-600" : "text-amber-500"}`}>{mData.currentTank}°C</td>
+                <td className={`px-4 py-2.5 text-sm text-right tabular-nums font-medium ${mData.minTap24h >= 50 ? "text-emerald-600" : "text-red-500"}`}>{mData.minTap24h}°C</td>
+                <td className="px-4 py-2.5 text-right">
+                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${mRiskColor}`}>
+                    {mRiskLabel}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        />
       </SectionCard>
 
       <SectionCard title={t("disinfLog",lang)} noPad>
