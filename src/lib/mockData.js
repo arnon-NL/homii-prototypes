@@ -26,7 +26,7 @@ export const buildings = [
     area: 3800,
     services: [
       { id: "fjernvarme", type: "fjernvarme", provider: "HOFOR", meterId: "KAM-DH-045", status: "active" },
-      { id: "vand", type: "vand", provider: "HOFOR", meterId: "KAM-WA-046", status: "active" },
+      { id: "vand", type: "vand", provider: "HOFOR", meterId: "KAM-WA-046", status: "offline" },
     ],
     status: "active",
   },
@@ -40,7 +40,7 @@ export const buildings = [
     services: [
       { id: "fjernvarme", type: "fjernvarme", provider: "HOFOR", meterId: "KAM-DH-089", status: "active" },
       { id: "vand", type: "vand", provider: "HOFOR", meterId: "KAM-WA-090", status: "active" },
-      { id: "el", type: "el", provider: "Ørsted", meterId: "KAM-EL-091", status: "active" },
+      { id: "el", type: "el", provider: "Ørsted", meterId: "KAM-EL-091", status: "error" },
     ],
     status: "active",
   },

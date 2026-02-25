@@ -2,6 +2,7 @@ import React from "react";
 import { Home, Inbox, CheckSquare, BarChart3, Zap, Building2, Gauge } from "lucide-react";
 import { brand, HomiiIcon } from "@/lib/brand";
 import { t } from "@/lib/i18n";
+import { buildings } from "@/lib/mockData";
 
 const navItems = [
   { id: "home",      icon: Home,        key: "home" },
@@ -11,9 +12,10 @@ const navItems = [
   { id: "workflows", icon: Zap,         key: "workflows" },
 ];
 
+const meterCount = buildings.flatMap(b => b.services).length;
 const recordItems = [
-  { id: "buildings", icon: Building2, key: "buildings", count: 4 },
-  { id: "meters",    icon: Gauge,     key: "meters",    count: 12 },
+  { id: "buildings", icon: Building2, key: "buildings", count: buildings.length },
+  { id: "meters",    icon: Gauge,     key: "meters",    count: meterCount },
 ];
 
 export default function Sidebar({ activePage, onNavigate, lang, onLangChange }) {
@@ -52,7 +54,7 @@ export default function Sidebar({ activePage, onNavigate, lang, onLangChange }) 
 
         <div className="h-px bg-slate-200 my-2 mx-1" />
 
-        <div className="px-2.5 py-1 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+        <div className="px-2.5 py-1 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">
           {t("records", lang)}
         </div>
         {recordItems.map(item => {

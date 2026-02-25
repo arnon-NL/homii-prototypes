@@ -48,15 +48,15 @@ function mkCooling(period, meter, lang) {
   const wk = lang==="da"?"Uge":"Week";
   if (period==="weekly") return Array.from({length:52},(_,n)=>{const m=Math.floor(n/4.33),w=m<3||m>9;const s=w?78+r(n)*8:68+r(n)*6,rt=w?42+r(n+100)*12:35+r(n+100)*10,c=s-rt,v=w?45+r(n+200)*30:15+r(n+200)*15;return{name:`${wk} ${n+1}`,supply:+s.toFixed(1),return:+rt.toFixed(1),cooling:+c.toFixed(1),volume:+v.toFixed(1),mwh:+((v*c)/860).toFixed(2)};});
   if (period==="monthly") return MS[lang].map((m,n)=>{const w=n<3||n>9;const s=w?80+r(n)*6:70+r(n)*5,rt=w?44+r(n+50)*10:36+r(n+50)*8,c=s-rt,v=w?190+r(n+100)*80:60+r(n+100)*50;return{name:m,supply:+s.toFixed(1),return:+rt.toFixed(1),cooling:+c.toFixed(1),volume:+v.toFixed(1),mwh:+((v*c)/860).toFixed(1)};});
-  return Array.from({length:5},(_,n)=>{const y=2021+n,s=75+r(n)*5,rt=40+r(n+50)*8,c=s-rt,v=1500+r(n+100)*600;return{name:`${y}`,supply:+s.toFixed(1),return:+rt.toFixed(1),cooling:+c.toFixed(1),volume:+v.toFixed(0),mwh:+((v*c)/860).toFixed(0)};});
+  return Array.from({length:5},(_,n)=>{const y=2022+n,s=75+r(n)*5,rt=40+r(n+50)*8,c=s-rt,v=1500+r(n+100)*600;return{name:`${y}`,supply:+s.toFixed(1),return:+rt.toFixed(1),cooling:+c.toFixed(1),volume:+v.toFixed(0),mwh:+((v*c)/860).toFixed(0)};});
 }
 
 function mkGraddage() {
-  const d=[];[2021,2022,2023,2024,2025].forEach(y=>{GK.forEach((m,mi)=>{const n=GN[m],f=0.85+Math.sin(y*7+mi*3)*0.15+Math.cos(y+mi*5)*0.08,a=Math.round(n*f),g=a>0?+(n/a).toFixed(3):1,ac=a*(4.2+Math.sin(y)*0.4)+Math.sin(y+mi)*30;d.push({year:y,mk:m,mi,ng:n,ag:a,guf:g,raw:+ac.toFixed(1),gaf:+(ac*g).toFixed(1)});});});return d;
+  const d=[];[2022,2023,2024,2025,2026].forEach(y=>{GK.forEach((m,mi)=>{const n=GN[m],f=0.85+Math.sin(y*7+mi*3)*0.15+Math.cos(y+mi*5)*0.08,a=Math.round(n*f),g=a>0?+(n/a).toFixed(3):1,ac=a*(4.2+Math.sin(y)*0.4)+Math.sin(y+mi)*30;d.push({year:y,mk:m,mi,ng:n,ag:a,guf:g,raw:+ac.toFixed(1),gaf:+(ac*g).toFixed(1)});});});return d;
 }
 
 function mkBar(lang) {
-  return MS[lang].map((m,mi)=>{const e={name:m};[2021,2022,2023,2024,2025].forEach(y=>{e[`h${y}`]=+(mi<3||mi>9?120+Math.sin(y+mi)*30:25+Math.sin(y+mi)*15).toFixed(1);e[`e${y}`]=+(45+Math.sin(y*2+mi)*12).toFixed(1);e[`w${y}`]=+(800+Math.sin(y+mi*2)*200).toFixed(0);});return e;});
+  return MS[lang].map((m,mi)=>{const e={name:m};[2022,2023,2024,2025,2026].forEach(y=>{e[`h${y}`]=+(mi<3||mi>9?120+Math.sin(y+mi)*30:25+Math.sin(y+mi)*15).toFixed(1);e[`e${y}`]=+(45+Math.sin(y*2+mi)*12).toFixed(1);e[`w${y}`]=+(800+Math.sin(y+mi*2)*200).toFixed(0);});return e;});
 }
 
 function mkLegionella(building) {
@@ -191,7 +191,7 @@ function ConsumptionDash() {
   const thr = HOFOR.standard.krav;
 
   // Heating bars state
-  const [vis, setVis] = useState([2023,2024,2025]);
+  const [vis, setVis] = useState([2024,2025,2026]);
   const [cmp, setCmp] = useState(false);
   const [cmpM, setCmpM] = useState(1);
   const barData = useMemo(() => mkBar(lang), [lang]);
@@ -199,7 +199,7 @@ function ConsumptionDash() {
 
   const cmpData = useMemo(() => {
     if (!cmp) return null;
-    return [2021,2022,2023,2024,2025].filter(y=>vis.includes(y)).map(y=>({name:`${y}`,value:barData[cmpM]?.[`h${y}`]||0,fill:yearColor[y]}));
+    return [2022,2023,2024,2025,2026].filter(y=>vis.includes(y)).map(y=>({name:`${y}`,value:barData[cmpM]?.[`h${y}`]||0,fill:yearColor[y]}));
   }, [cmp,cmpM,vis,barData]);
 
   // Degree Days state
@@ -212,7 +212,7 @@ function ConsumptionDash() {
     return e;
   }), [ddAll, vis, ms]);
 
-  const ddYt = useMemo(() => [2021,2022,2023,2024,2025].map(y => {
+  const ddYt = useMemo(() => [2022,2023,2024,2025,2026].map(y => {
     const rows = ddAll.filter(d=>d.year===y);
     return { name:`${y}`, ag:rows.reduce((s,r)=>s+r.ag,0), ng:GNT, guf:+(GNT/rows.reduce((s,r)=>s+r.ag,0)).toFixed(3), raw:+rows.reduce((s,r)=>s+r.raw,0).toFixed(0), gaf:+rows.reduce((s,r)=>s+r.gaf,0).toFixed(0) };
   }), [ddAll]);
@@ -246,7 +246,7 @@ function ConsumptionDash() {
             <ComposedChart data={coolData} margin={{top:5,right:20,bottom:5,left:0}}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
               <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-              <YAxis tick={{fontSize:11, fill:brand.muted}} unit="°C" axisLine={false} tickLine={false} />
+              <YAxis tick={{fontSize:11, fill:brand.muted}} unit="°C" domain={[0, 90]} axisLine={false} tickLine={false} />
               <Tooltip content={<BrandTooltip/>}/>
               <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
               <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`${t("req",lang)}: ${thr}°C`,fill:brand.red,fontSize:10,position:"right"}}/>
@@ -267,7 +267,7 @@ function ConsumptionDash() {
 
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-xs text-slate-400 mr-1">{t("showYears",lang)}</span>
-          {[2021,2022,2023,2024,2025].map(y=><YearPill key={y} year={y} active={vis.includes(y)} onClick={()=>tog(y)}/>)}
+          {[2022,2023,2024,2025,2026].map(y=><YearPill key={y} year={y} active={vis.includes(y)} onClick={()=>tog(y)}/>)}
           <span className="w-px h-4 bg-slate-200 mx-2"/>
           <Button variant="outline" size="sm" className="text-[11px] h-7 px-2.5" onClick={()=>setCmp(!cmp)}>
             {cmp?t("showAll",lang):t("compareOne",lang)}
@@ -393,7 +393,7 @@ function TariffDash() {
   const [period, setPeriod] = useState("monthly");
   const [meter, setMeter] = useState("all");
   const [zone, setZone] = useState("standard");
-  const [improveDeg, setImproveDeg] = useState(0);
+  const [improveDeg, setImproveDeg] = useState(2);
   const data = useMemo(() => mkCooling(period, meter, lang), [period, meter, lang]);
 
   const hoforZone = HOFOR[zone];
@@ -541,7 +541,7 @@ export function CoolingReport() {
           <ComposedChart data={data} margin={{top:5,right:20,bottom:5,left:0}}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
             <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-            <YAxis tick={{fontSize:11, fill:brand.muted}} unit="°C" axisLine={false} tickLine={false} />
+            <YAxis tick={{fontSize:11, fill:brand.muted}} unit="°C" domain={[0, 90]} axisLine={false} tickLine={false} />
             <Tooltip content={<BrandTooltip/>}/>
             <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
             <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`${t("req",lang)}: ${thr}°C`,fill:brand.red,fontSize:10,position:"right"}}/>
@@ -731,7 +731,7 @@ export default function DashboardContainer() {
         </TabsList>
       </div>
 
-      <main className="flex-1 max-w-[1120px] w-full mx-auto px-6 py-6 overflow-y-auto">
+      <main className="flex-1 max-w-[1200px] w-full mx-auto px-6 py-6 overflow-y-auto">
         <TabsContent value="consumption"><ConsumptionDash/></TabsContent>
         <TabsContent value="tariff"><TariffDash/></TabsContent>
       </main>

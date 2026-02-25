@@ -1,6 +1,6 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Thermometer, Shield } from "lucide-react";
+import { ArrowLeft, ArrowRight, Thermometer, Shield } from "lucide-react";
 import { brand, Icon } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
 import { CoolingReport, LegionellaReport } from "./homii-energy-dashboard";
@@ -38,7 +38,7 @@ export default function ReportsPage({ onNavigate, reportId }) {
 
     return (
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[1120px] mx-auto px-8 py-6">
+        <div className="max-w-[1200px] mx-auto px-8 py-6">
           <Breadcrumbs items={crumbs} />
           <div className="mb-6">
             <button
@@ -87,10 +87,11 @@ export default function ReportsPage({ onNavigate, reportId }) {
                       <p className="text-[12px] text-slate-400 leading-relaxed">
                         {t(report.descKey, lang)}
                       </p>
-                      <p className="text-[10px] text-slate-300 mt-2">
+                      <p className="text-[11px] text-slate-400 mt-2">
                         {t(report.updatedKey, lang)}: 2026-02-24
                       </p>
                     </div>
+                    <ArrowRight size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors mt-1 shrink-0" />
                   </div>
                 </CardContent>
               </Card>

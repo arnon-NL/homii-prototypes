@@ -25,7 +25,7 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-[960px] mx-auto px-6 py-6">
+      <div className="max-w-[1200px] mx-auto px-6 py-6">
         <Breadcrumbs items={crumbs} />
 
         {/* Building header */}
@@ -54,10 +54,7 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
           <TabsList className="bg-transparent h-10 gap-0 p-0 border-b border-slate-200 w-full justify-start rounded-none">
             {[
               { value: "overview", label: t("overview", lang) },
-              { value: "units", label: t("rentalUnits", lang) },
               { value: "services", label: t("services", lang) },
-              { value: "tasks", label: t("tasks", lang) },
-              { value: "meters", label: t("meters", lang) },
             ].map(tab => (
               <TabsTrigger key={tab.value} value={tab.value}
                 className="rounded-none border-b-2 border-transparent data-[state=active]:border-[#3EB1C8] data-[state=active]:text-slate-900 data-[state=active]:shadow-none px-4 text-[13px] text-slate-400 hover:text-slate-600 transition-colors">
@@ -88,8 +85,14 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
                       <p className="text-[11px] text-slate-400">{t("provider", lang)}: {svc.provider}</p>
                       <p className="text-[11px] text-slate-400">{t("meterId", lang)}: {svc.meterId}</p>
                       <div className="mt-2">
-                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-emerald-50 text-emerald-600">
-                          {svc.status === "active" ? (lang === "da" ? "Aktiv" : "Active") : svc.status}
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                          svc.status === "error" ? "bg-red-50 text-red-600" :
+                          svc.status === "offline" ? "bg-amber-50 text-amber-600" :
+                          "bg-emerald-50 text-emerald-600"
+                        }`}>
+                          {svc.status === "active" ? (lang === "da" ? "Aktiv" : "Active") :
+                           svc.status === "offline" ? "Offline" :
+                           svc.status === "error" ? (lang === "da" ? "Fejl" : "Error") : svc.status}
                         </span>
                       </div>
                     </CardContent>
@@ -126,14 +129,6 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
             <SmartInsights building={building} />
           </TabsContent>
 
-          {/* Placeholder tabs */}
-          {["units", "tasks", "meters"].map(tab => (
-            <TabsContent key={tab} value={tab}>
-              <div className="flex items-center justify-center h-48 text-sm text-slate-400">
-                {t("comingSoon", lang)}
-              </div>
-            </TabsContent>
-          ))}
         </Tabs>
       </div>
     </div>
