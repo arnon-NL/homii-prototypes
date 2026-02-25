@@ -42,13 +42,25 @@ const GK = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","D
 const GN = { Jan:480,Feb:410,Mar:340,Apr:210,Maj:100,Jun:30,Jul:8,Aug:15,Sep:80,Okt:230,Nov:360,Dec:460 };
 const GNT = Object.values(GN).reduce((a,b)=>a+b,0);
 
+/* HOFOR Afkøling threshold — configurable per zone */
+const AFKOELING_THRESHOLD = HOFOR.standard.krav; // 30 kWh/m³
+
 function mkCooling(period, meter, lang) {
   const seed = meter === "all" ? 42 : meter.charCodeAt(meter.length-1);
   const r = (n) => Math.sin(seed*100+n*17)*0.5+0.5;
+  /* Meter-reading noise: makes mwh slightly different from (v*c)/860 so
+     afkoeling ≠ cooling °C. Simulates real-world meter reading variance. */
+  const noise = (n) => 0.92 + Math.sin(seed*7+n*31)*0.12; // ±12 % energy meter variance
   const wk = lang==="da"?"Uge":"Week";
-  if (period==="weekly") return Array.from({length:52},(_,n)=>{const m=Math.floor(n/4.33),w=m<3||m>9;const s=w?78+r(n)*8:68+r(n)*6,rt=w?42+r(n+100)*12:35+r(n+100)*10,c=s-rt,v=w?45+r(n+200)*30:15+r(n+200)*15;return{name:`${wk} ${n+1}`,supply:+s.toFixed(1),return:+rt.toFixed(1),cooling:+c.toFixed(1),volume:+v.toFixed(1),mwh:+((v*c)/860).toFixed(2)};});
-  if (period==="monthly") return MS[lang].map((m,n)=>{const w=n<3||n>9;const s=w?80+r(n)*6:70+r(n)*5,rt=w?44+r(n+50)*10:36+r(n+50)*8,c=s-rt,v=w?190+r(n+100)*80:60+r(n+100)*50;return{name:m,supply:+s.toFixed(1),return:+rt.toFixed(1),cooling:+c.toFixed(1),volume:+v.toFixed(1),mwh:+((v*c)/860).toFixed(1)};});
-  return Array.from({length:5},(_,n)=>{const y=2022+n,s=75+r(n)*5,rt=40+r(n+50)*8,c=s-rt,v=1500+r(n+100)*600;return{name:`${y}`,supply:+s.toFixed(1),return:+rt.toFixed(1),cooling:+c.toFixed(1),volume:+v.toFixed(0),mwh:+((v*c)/860).toFixed(0)};});
+  const mkRow = (name, s, rt, v, n) => {
+    const c = s - rt;
+    const mwh = +((v * c * noise(n)) / 860).toFixed(2);
+    const afkoeling = v > 0 ? +((mwh / v) * 860).toFixed(1) : 0;
+    return { name, supply:+s.toFixed(1), return:+rt.toFixed(1), cooling:+c.toFixed(1), volume:+v.toFixed(1), mwh, afkoeling };
+  };
+  if (period==="weekly") return Array.from({length:52},(_,n)=>{const m=Math.floor(n/4.33),w=m<3||m>9;const s=w?78+r(n)*8:68+r(n)*6,rt=w?42+r(n+100)*12:35+r(n+100)*10,v=w?45+r(n+200)*30:15+r(n+200)*15;return mkRow(`${wk} ${n+1}`,s,rt,v,n);});
+  if (period==="monthly") return MS[lang].map((m,n)=>{const w=n<3||n>9;const s=w?80+r(n)*6:70+r(n)*5,rt=w?44+r(n+50)*10:36+r(n+50)*8,v=w?190+r(n+100)*80:60+r(n+100)*50;return mkRow(m,s,rt,v,n);});
+  return Array.from({length:5},(_,n)=>{const y=2022+n,s=75+r(n)*5,rt=40+r(n+50)*8,v=1500+r(n+100)*600;return mkRow(`${y}`,s,rt,v,n);});
 }
 
 function mkGraddage() {
@@ -176,6 +188,57 @@ const SectionCard = ({ title, children, noPad }) => (
 );
 
 /* ═══════════════════════════════════════════════════════
+   Custom meter aggregation picker (Improvement 4)
+   ═══════════════════════════════════════════════════════ */
+function MeterCheckboxPicker({ meters, selected, onChange, lang }) {
+  const [open, setOpen] = useState(false);
+  const count = selected.length;
+  const allIds = meters.filter(m => m.id !== "all").map(m => m.id);
+  const allSelected = allIds.every(id => selected.includes(id));
+  return (
+    <div className="relative">
+      <Button variant="outline" size="sm" className="text-[11px] h-8 px-3 gap-1.5" onClick={() => setOpen(!open)}>
+        {t("customSelection", lang)}
+        {count > 0 && <span className="rounded-full bg-slate-100 text-slate-600 px-1.5 text-[10px] font-semibold">{count} {t("metersSelected", lang)}</span>}
+      </Button>
+      {open && (
+        <div className="absolute top-full mt-1 left-0 z-50 w-56 rounded-lg border border-slate-200 bg-white shadow-lg p-2"
+          onMouseLeave={() => setOpen(false)}>
+          <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 cursor-pointer text-xs">
+            <input type="checkbox" className="rounded border-slate-300"
+              checked={allSelected} onChange={() => onChange(allSelected ? [] : [...allIds])} />
+            <span className="font-medium">{t("allMeters", lang)}</span>
+          </label>
+          <div className="h-px bg-slate-100 my-1" />
+          {meters.filter(m => m.id !== "all").map(m => (
+            <label key={m.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 cursor-pointer text-xs">
+              <input type="checkbox" className="rounded border-slate-300"
+                checked={selected.includes(m.id)}
+                onChange={() => onChange(selected.includes(m.id) ? selected.filter(x => x !== m.id) : [...selected, m.id])} />
+              <span>{m.l}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   Date range selector (Improvement 5)
+   ═══════════════════════════════════════════════════════ */
+function DateRangeSelector({ value, onChange, lang }) {
+  return (
+    <div className="flex items-center gap-2">
+      <SegmentedControl value={value} onChange={onChange} options={[
+        { value: "12m", label: t("last12Months", lang) },
+        { value: "all", label: t("allData", lang) },
+      ]} />
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
    Tab 1 — Unified Consumption & Analysis
    Combines: Cooling temps, Heating bars, Degree Days
    ═══════════════════════════════════════════════════════ */
@@ -187,8 +250,20 @@ function ConsumptionDash() {
   // Cooling state
   const [period, setPeriod] = useState("monthly");
   const [meter, setMeter] = useState("all");
-  const coolData = useMemo(() => mkCooling(period, meter, lang), [period, meter, lang]);
-  const thr = HOFOR.standard.krav;
+  const [compareMeter, setCompareMeter] = useState("none");
+  const [customMeters, setCustomMeters] = useState([]);
+  const [dateRange, setDateRange] = useState("12m");
+  const coolData = useMemo(() => {
+    const raw = mkCooling(period, meter, lang);
+    if (dateRange === "12m" && period === "weekly") return raw.slice(-52); // last 12 months
+    return raw;
+  }, [period, meter, lang, dateRange]);
+  const compareData = useMemo(() => compareMeter !== "none" ? mkCooling(period, compareMeter, lang) : null, [period, compareMeter, lang]);
+  const thr = AFKOELING_THRESHOLD;
+
+  // Afkøling KPI
+  const avgAfkoeling = +(coolData.reduce((s,d)=>s+d.afkoeling,0)/coolData.length).toFixed(1);
+  const afkOk = avgAfkoeling <= thr;
 
   // Heating bars state
   const [vis, setVis] = useState([2024,2025,2026]);
@@ -234,6 +309,8 @@ function ConsumptionDash() {
             <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue/></SelectTrigger>
             <SelectContent>{meters.map(m=><SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}</SelectContent>
           </Select>
+          <MeterCheckboxPicker meters={meters} selected={customMeters} onChange={setCustomMeters} lang={lang} />
+          <DateRangeSelector value={dateRange} onChange={v=>v&&setDateRange(v)} lang={lang} />
           <SegmentedControl value={period} onChange={v=>v&&setPeriod(v)} options={[
             {value:"weekly", label:t("weekly",lang)},
             {value:"monthly", label:t("monthly",lang)},
@@ -254,6 +331,51 @@ function ConsumptionDash() {
               <Line type="monotone" dataKey="supply" stroke={brand.red} strokeWidth={1.5} dot={false} name={t("supplyLine",lang)}/>
               <Line type="monotone" dataKey="return" stroke={brand.amber} strokeWidth={1.5} dot={false} name={t("returnLine",lang)}/>
               <Line type="monotone" dataKey="cooling" stroke={brand.blue} strokeWidth={2} dot={{r:2.5,fill:brand.blue,strokeWidth:0}} name={t("coolingLine",lang)}/>
+            </ComposedChart>
+          </ResponsiveContainer>
+        </SectionCard>
+      </div>
+
+      <div className="h-px bg-slate-200" />
+
+      {/* — Section: Afkøling (kWh/m³) Trend — */}
+      <div className="space-y-4">
+        <SectionHeader title={t("afkoelingTrendTitle",lang)} description={t("afkoelingTrendSub",lang)}>
+          <Select value={compareMeter} onValueChange={setCompareMeter}>
+            <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue placeholder={t("compareWith",lang)}/></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t("noComparison",lang)}</SelectItem>
+              {meters.filter(m=>m.id!==meter).map(m=><SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </SectionHeader>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Metric label={t("afkoelingKpi",lang)} value={avgAfkoeling} unit={t("afkoelingUnit",lang)}
+            sub={afkOk ? `${t("belowThreshold",lang)} (${thr})` : `${t("aboveThreshold",lang)} (${thr})`} status={afkOk?"good":"bad"} />
+          <Metric label={t("avgCooling",lang)} value={(coolData.reduce((s,d)=>s+d.cooling,0)/coolData.length).toFixed(1)} unit="°C"
+            sub={lang==="da"?"Fremløb − retur":"Supply − return"} />
+          <Metric label={t("totalCons",lang)} value={coolData.reduce((s,d)=>s+d.mwh,0).toFixed(1)} unit="MWh" />
+          <Metric label={t("volume",lang)} value={coolData.reduce((s,d)=>s+d.volume,0).toFixed(0)} unit="m³" />
+        </div>
+
+        <SectionCard title={null}>
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={coolData} margin={{top:5,right:20,bottom:5,left:0}}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
+              <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" kWh/m³" axisLine={false} tickLine={false} />
+              <Tooltip content={<BrandTooltip/>}/>
+              <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
+              {/* Shaded area above threshold = surcharge zone */}
+              <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5}
+                label={{value:`${t("hoforThreshold",lang)}: ${thr} kWh/m³`,fill:brand.red,fontSize:10,position:"right"}} />
+              <Area type="monotone" dataKey="afkoeling" fill={brand.blue} fillOpacity={0.08} stroke="none" name={t("afkoelingLine",lang)} />
+              <Line type="monotone" dataKey="afkoeling" stroke={brand.blue} strokeWidth={2} dot={{r:2.5,fill:brand.blue,strokeWidth:0}} name={t("afkoelingLine",lang)} />
+              {compareData && (
+                <Line type="monotone" data={compareData} dataKey="afkoeling" stroke={brand.midBlue} strokeWidth={1.5} strokeDasharray="6 3" dot={false}
+                  name={`${t("afkoelingLine",lang)} (${meters.find(m=>m.id===compareMeter)?.l || compareMeter})`} />
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         </SectionCard>
@@ -397,7 +519,7 @@ function TariffDash() {
   const data = useMemo(() => mkCooling(period, meter, lang), [period, meter, lang]);
 
   const hoforZone = HOFOR[zone];
-  const thr = hoforZone.krav;
+  const thr = hoforZone.krav; // zone-specific threshold for tariff
 
   const avg = (k) => +(data.reduce((s,d)=>s+d[k],0)/data.length).toFixed(1);
   const avgC = avg("cooling"), avgR = avg("return"), totMWh = +data.reduce((s,d)=>s+d.mwh,0).toFixed(1);
@@ -500,11 +622,15 @@ export function CoolingReport() {
   const lang = useLang();
   const [period, setPeriod] = useState("monthly");
   const [meter, setMeter] = useState("all");
+  const [compareMeter, setCompareMeter] = useState("none");
   const data = useMemo(() => mkCooling(period, meter, lang), [period, meter, lang]);
-  const thr = HOFOR.standard.krav;
+  const compareData = useMemo(() => compareMeter !== "none" ? mkCooling(period, compareMeter, lang) : null, [period, compareMeter, lang]);
+  const thr = AFKOELING_THRESHOLD;
 
   const avg = (k) => +(data.reduce((s,d)=>s+d[k],0)/data.length).toFixed(1);
   const avgC = avg("cooling"), avgR = avg("return"), totMWh = +data.reduce((s,d)=>s+d.mwh,0).toFixed(1);
+  const avgAfk = avg("afkoeling");
+  const afkOk = avgAfk <= thr;
   const ok = avgC >= thr;
 
   const meters = [
@@ -529,13 +655,47 @@ export function CoolingReport() {
         ]} />
       </SectionHeader>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <Metric label={t("afkoelingKpi",lang)} value={avgAfk} unit={t("afkoelingUnit",lang)}
+          sub={afkOk ? `${t("belowThreshold",lang)} (${thr})` : `${t("aboveThreshold",lang)} (${thr})`} status={afkOk?"good":"bad"} />
         <Metric label={t("avgCooling",lang)} value={avgC} unit="°C" sub={ok ? `${t("aboveReq",lang)} (${thr}°C)` : `${t("belowReq",lang)} (${thr}°C)`} status={ok?"good":"bad"} />
         <Metric label={t("avgReturn",lang)} value={avgR} unit="°C" sub={avgR<40?t("goodReturn",lang):t("canImprove",lang)} status={avgR<40?"good":"warn"} />
         <Metric label={t("totalCons",lang)} value={totMWh} unit="MWh" />
         <Metric label={t("status",lang)} value={ok?t("bonus",lang):t("surcharge",lang)} sub={ok?t("expectedBonus",lang):t("riskSurcharge",lang)} status={ok?"good":"bad"} />
       </div>
 
+      {/* Afkøling (kWh/m³) Trend */}
+      <SectionCard title={t("afkoelingTrendTitle",lang)}>
+        <p className="text-xs text-slate-400 mb-3">{t("afkoelingTrendSub",lang)}</p>
+        <div className="flex items-center gap-3 mb-3">
+          <Select value={compareMeter} onValueChange={setCompareMeter}>
+            <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue placeholder={t("compareWith",lang)}/></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t("noComparison",lang)}</SelectItem>
+              {meters.filter(m=>m.id!==meter).map(m=><SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <ResponsiveContainer width="100%" height={280}>
+          <ComposedChart data={data} margin={{top:5,right:20,bottom:5,left:0}}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+            <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
+            <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" kWh/m³" axisLine={false} tickLine={false} />
+            <Tooltip content={<BrandTooltip/>}/>
+            <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
+            <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5}
+              label={{value:`${t("hoforThreshold",lang)}: ${thr} kWh/m³`,fill:brand.red,fontSize:10,position:"right"}} />
+            <Area type="monotone" dataKey="afkoeling" fill={brand.blue} fillOpacity={0.08} stroke="none" name={t("afkoelingLine",lang)} />
+            <Line type="monotone" dataKey="afkoeling" stroke={brand.blue} strokeWidth={2} dot={{r:2.5,fill:brand.blue,strokeWidth:0}} name={t("afkoelingLine",lang)} />
+            {compareData && (
+              <Line type="monotone" data={compareData} dataKey="afkoeling" stroke={brand.midBlue} strokeWidth={1.5} strokeDasharray="6 3" dot={false}
+                name={`${t("afkoelingLine",lang)} (${meters.find(m=>m.id===compareMeter)?.l || compareMeter})`} />
+            )}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </SectionCard>
+
+      {/* Temperature chart (Supply, Return, Cooling °C) */}
       <SectionCard title={t("chartTitle",lang)}>
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart data={data} margin={{top:5,right:20,bottom:5,left:0}}>
@@ -544,7 +704,6 @@ export function CoolingReport() {
             <YAxis tick={{fontSize:11, fill:brand.muted}} unit="°C" domain={[0, 90]} axisLine={false} tickLine={false} />
             <Tooltip content={<BrandTooltip/>}/>
             <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
-            <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`${t("req",lang)}: ${thr}°C`,fill:brand.red,fontSize:10,position:"right"}}/>
             <Area type="monotone" dataKey="cooling" fill={brand.blue} fillOpacity={0.06} stroke="none" name={t("coolingArea",lang)}/>
             <Line type="monotone" dataKey="supply" stroke={brand.red} strokeWidth={1.5} dot={false} name={t("supplyLine",lang)}/>
             <Line type="monotone" dataKey="return" stroke={brand.amber} strokeWidth={1.5} dot={false} name={t("returnLine",lang)}/>
@@ -567,13 +726,14 @@ export function CoolingReport() {
 
       <SectionCard title={t("coolingTable",lang)} noPad>
         <DataTable
-          headers={[t("period",lang), t("supply",lang), t("returnT",lang), t("coolingC",lang), t("volume",lang), t("consCol",lang)]}
+          headers={[t("period",lang), t("supply",lang), t("returnT",lang), t("coolingC",lang), t("afkoelingCol",lang), t("volume",lang), t("consCol",lang)]}
           rows={data.map((r,idx) => (
             <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
               <td className="px-4 py-2 text-sm font-medium" style={{color: brand.navy}}>{r.name}</td>
               <td className="px-4 py-2 text-sm text-right tabular-nums">{r.supply}</td>
               <td className={`px-4 py-2 text-sm text-right tabular-nums ${r.return > 42 ? "text-red-500" : ""}`}>{r.return}</td>
-              <td className={`px-4 py-2 text-sm text-right tabular-nums font-medium ${r.cooling >= thr ? "text-emerald-600" : "text-red-500"}`}>{r.cooling}</td>
+              <td className="px-4 py-2 text-sm text-right tabular-nums">{r.cooling}</td>
+              <td className={`px-4 py-2 text-sm text-right tabular-nums font-medium ${r.afkoeling <= thr ? "text-emerald-600" : r.afkoeling <= thr*1.1 ? "text-amber-500" : "text-red-500"}`}>{r.afkoeling}</td>
               <td className="px-4 py-2 text-sm text-right tabular-nums">{r.volume}</td>
               <td className="px-4 py-2 text-sm text-right tabular-nums">{r.mwh}</td>
             </tr>

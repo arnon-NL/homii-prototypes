@@ -221,6 +221,25 @@ export const dict = {
   reportLegionellaTitle:   { da: "Legionella Compliance",       en: "Legionella Compliance" },
   reportLegionellaDesc:    { da: "Varmtvandsovervågning og termisk desinfektionslog", en: "Hot water monitoring and thermal disinfection log" },
   reportUpdated:           { da: "Senest opdateret",            en: "Last updated" },
+  // v8: Afkøling (kWh/m³) metric
+  afkoelingKpi:            { da: "Gns. Afkøling",               en: "Avg. Afkøling" },
+  afkoelingUnit:           { da: "kWh/m³",                      en: "kWh/m³" },
+  afkoelingTrendTitle:     { da: "Afkøling (kWh/m³) over tid",  en: "Afkøling (kWh/m³) Over Time" },
+  afkoelingTrendSub:       { da: "Afkøling = (MWh / m³) × 860. Lavere er bedre. HOFOR-krav: 30 kWh/m³.", en: "Afkøling = (MWh / m³) × 860. Lower is better. HOFOR threshold: 30 kWh/m³." },
+  afkoelingCol:            { da: "Afkøling (kWh/m³)",           en: "Afkøling (kWh/m³)" },
+  afkoelingLine:           { da: "Afkøling (kWh/m³)",           en: "Afkøling (kWh/m³)" },
+  hoforThreshold:          { da: "HOFOR krav",                  en: "HOFOR threshold" },
+  aboveThreshold:          { da: "Over krav — tillæg",          en: "Above threshold — surcharge" },
+  belowThreshold:          { da: "Under krav — bonus",          en: "Below threshold — bonus" },
+  compareWith:             { da: "Sammenlign med...",            en: "Compare with..." },
+  noComparison:            { da: "Ingen sammenligning",          en: "No comparison" },
+  customSelection:         { da: "Brugerdefineret...",           en: "Custom selection..." },
+  metersSelected:          { da: "målere valgt",                 en: "meters selected" },
+  dateRange:               { da: "Datointerval",                 en: "Date range" },
+  startDate:               { da: "Fra",                          en: "From" },
+  endDate:                 { da: "Til",                          en: "To" },
+  last12Months:            { da: "Seneste 12 mdr.",              en: "Last 12 months" },
+  allData:                 { da: "Alle data",                    en: "All data" },
 };
 
 export const t = (k, lang) => dict[k]?.[lang] || dict[k]?.en || k;
