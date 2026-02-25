@@ -1,9 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { brand, HOFOR, EPC_COLORS } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
-import { TrendingDown, AlertTriangle, ArrowRight, Zap, Flame, Shield, Award, Target, Sparkles } from "lucide-react";
+import { getMetersForBuilding } from "@/lib/mockData";
+import { TrendingDown, AlertTriangle, ArrowRight, Zap, Flame, Shield, Award, Target, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════
    Recommendation Engine — generates prioritized insights
@@ -27,8 +28,9 @@ const categoryIcons = {
 
 function generateRecommendations(building, lang) {
   const recs = [];
-  const hasFjernvarme = building.services.some(s => s.type === "fjernvarme");
-  const hasEl = building.services.some(s => s.type === "el");
+  const buildingMeters = getMetersForBuilding(building.id);
+  const hasFjernvarme = buildingMeters.some(m => m.type === "fjernvarme");
+  const hasEl = buildingMeters.some(m => m.type === "el");
 
   // 1. HOFOR Motivationstarif — always relevant for fjernvarme buildings
   if (hasFjernvarme) {
@@ -65,7 +67,7 @@ function generateRecommendations(building, lang) {
     }
   }
 
-  // 2. EPC Upgrade Path — critical for D/E/F/G buildings (B required by 2030)
+  // 2. EPC Upgrade Path
   const epcOrder = ["A", "B", "C", "D", "E", "F", "G"];
   const epcIdx = epcOrder.indexOf(building.epc);
   if (epcIdx > 1) {
@@ -86,7 +88,7 @@ function generateRecommendations(building, lang) {
     });
   }
 
-  // 3. Legionella Optimization — reduce energy waste from over-heating
+  // 3. Legionella Optimization
   if (hasFjernvarme) {
     const simTankTemp = building.id === "aab-amager" ? 62 : 58;
     if (simTankTemp > 57) {
@@ -107,7 +109,7 @@ function generateRecommendations(building, lang) {
     }
   }
 
-  // 4. Smart Heating Curve Optimization
+  // 4. Smart Heating Curve
   if (hasFjernvarme && building.units > 100) {
     recs.push({
       id: "heating-curve",
@@ -122,7 +124,7 @@ function generateRecommendations(building, lang) {
     });
   }
 
-  // 5. Sub-metering ROI for buildings without el
+  // 5. Sub-metering ROI
   if (!hasEl && building.units > 50) {
     recs.push({
       id: "submetering",
@@ -199,40 +201,51 @@ function InsightCard({ rec, lang }) {
 
 export default function SmartInsights({ building }) {
   const lang = useLang();
+  const [expanded, setExpanded] = useState(false);
   const recs = useMemo(() => generateRecommendations(building, lang), [building, lang]);
   const totalSaving = recs.reduce((s, r) => s + r.savingDKK, 0);
 
   if (recs.length === 0) return null;
 
   return (
-    <div className="mt-6">
-      {/* Section header */}
-      <div className="flex items-center gap-2 mb-4">
+    <div className="mt-4">
+      {/* Collapsible header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors"
+      >
         <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: brand.blue + "15" }}>
           <Sparkles size={14} style={{ color: brand.blue }} />
         </div>
-        <div>
-          <h3 className="text-sm font-semibold" style={{ color: brand.navy }}>
-            {t("smartInsightsTitle", lang)}
-          </h3>
-          <p className="text-[11px] text-slate-400">{t("smartInsightsSub", lang)}</p>
+        <div className="flex-1 text-left">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold" style={{ color: brand.navy }}>
+              {t("smartInsightsTitle", lang)}
+            </h3>
+            <span className="text-[11px] text-slate-400">
+              {recs.length} {t("insightsCount", lang)}
+            </span>
+          </div>
         </div>
-        <div className="ml-auto text-right">
+        <div className="text-right mr-2">
           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
             {t("totalPotential", lang)}
           </p>
-          <p className="text-lg font-bold text-emerald-700">
-            {totalSaving.toLocaleString("da-DK")} <span className="text-sm font-medium">DKK/{lang === "da" ? "år" : "yr"}</span>
+          <p className="text-sm font-bold text-emerald-700">
+            {totalSaving.toLocaleString("da-DK")} DKK/{lang === "da" ? "år" : "yr"}
           </p>
         </div>
-      </div>
+        {expanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+      </button>
 
-      {/* Recommendations */}
-      <div className="flex flex-col gap-3">
-        {recs.map(rec => (
-          <InsightCard key={rec.id} rec={rec} lang={lang} />
-        ))}
-      </div>
+      {/* Expanded recommendations */}
+      {expanded && (
+        <div className="flex flex-col gap-3 mt-3">
+          {recs.map(rec => (
+            <InsightCard key={rec.id} rec={rec} lang={lang} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

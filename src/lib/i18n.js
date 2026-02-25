@@ -139,9 +139,12 @@ export const dict = {
   minutes:            { da: "min",                         en: "min" },
   compliant:          { da: "I overensstemmelse",          en: "Compliant" },
   nonCompliant:       { da: "Ikke i overensstemmelse",     en: "Non-compliant" },
-  // Shell-level i18n
+
+  // ── Shell-level navigation ──
   buildings:          { da: "Bygninger",                   en: "Buildings" },
+  meter:              { da: "Måler",                       en: "Meter" },
   meters:             { da: "Målere",                      en: "Meters" },
+  suppliers:          { da: "Leverandører",                en: "Suppliers" },
   home:               { da: "Hjem",                        en: "Home" },
   inbox:              { da: "Indbakke",                    en: "Inbox" },
   tasks:              { da: "Opgaver",                     en: "Tasks" },
@@ -166,11 +169,15 @@ export const dict = {
   building:           { da: "Bygning",                     en: "Building" },
   units:              { da: "enheder",                     en: "units" },
   area:               { da: "areal",                       en: "area" },
-  // Smart Insights
+
+  // ── Smart Insights (collapsible) ──
   smartInsightsTitle: { da: "Smarte Anbefalinger",         en: "Smart Insights" },
   smartInsightsSub:   { da: "AI-drevne besparelsesmuligheder baseret på bygningsdata og HOFOR 2026-tariffer",
                         en: "AI-driven savings opportunities based on building data and HOFOR 2026 tariffs" },
   totalPotential:     { da: "Samlet potentiale",           en: "Total potential" },
+  insightsCount:      { da: "anbefalinger",                en: "recommendations" },
+  showInsights:       { da: "Vis anbefalinger",            en: "Show recommendations" },
+  hideInsights:       { da: "Skjul anbefalinger",          en: "Hide recommendations" },
   recTariffSurchargeTitle: { da: "Afkøling under HOFOR-krav — tillæg risiko",
                              en: "Cooling below HOFOR requirement — surcharge risk" },
   recTariffSurchargeDesc:  { da: "Aktuel afkøling er under det nye 30°C-krav for 2026. Forbedring af returtemperatur vil eliminere motivationstarif-tillægget og reducere varmeudgifterne.",
@@ -202,26 +209,104 @@ export const dict = {
   timeline3to6:            { da: "3-6 mdr.",                  en: "3-6 mo." },
   timeline6to12:           { da: "6-12 mdr.",                 en: "6-12 mo." },
   timeline12to24:          { da: "12-24 mdr.",                en: "12-24 mo." },
-  // v6: Restructured tabs
+
+  // ── Dashboard tabs ──
   tabConsumptionAnalysis:  { da: "Forbrug & Analyse",           en: "Consumption & Analysis" },
   tabTariff:               { da: "HOFOR Tarif",                 en: "HOFOR Tariff" },
   heatingConsTitle:        { da: "Varmeforbrug",                en: "Heating Consumption" },
   heatingConsSub:          { da: "Månedligt fjernvarmeforbrug med graddagekorrigering", en: "Monthly district heating consumption with degree day adjustment" },
-  // v6: Records section
+
+  // ── Navigation sections ──
   records:                 { da: "Registre",                    en: "Records" },
-  // v6: Meters page
+  analyse:                 { da: "Analyse",                     en: "Analysis" },
+  system:                  { da: "System",                      en: "System" },
+
+  // ── Meters page ──
   meterType:               { da: "Type",                        en: "Type" },
   meterStatus:             { da: "Status",                      en: "Status" },
   lastReading:             { da: "Seneste aflæsning",           en: "Last Reading" },
   readingDate:             { da: "Aflæsningsdato",              en: "Reading Date" },
   active:                  { da: "Aktiv",                       en: "Active" },
-  // v6: Reports page
+
+  // ── Meter detail page ──
+  meterDetails:            { da: "Målerdetaljer",               en: "Meter Details" },
+  readings:                { da: "Aflæsninger",                 en: "Readings" },
+  activity:                { da: "Aktivitet",                   en: "Activity" },
+  serialNumber:            { da: "Serienummer",                 en: "Serial Number" },
+  installDate:             { da: "Installationsdato",           en: "Install Date" },
+  readingFrequency:        { da: "Aflæsningsfrekvens",          en: "Reading Frequency" },
+  dataQuality:             { da: "Datakvalitet",                en: "Data Quality" },
+  meterUnit:               { da: "Enhed",                       en: "Unit" },
+  relationships:           { da: "Relationer",                  en: "Relationships" },
+  supplier:                { da: "Leverandør",                  en: "Supplier" },
+  recentReadings:          { da: "Seneste aflæsninger",         en: "Recent Readings" },
+  date:                    { da: "Dato",                        en: "Date" },
+  value:                   { da: "Værdi",                       en: "Value" },
+  consumptionTrend:        { da: "Forbrugstrend",               en: "Consumption Trend" },
+  noActivityYet:           { da: "Ingen aktivitet endnu",       en: "No activity yet" },
+  meterCreated:            { da: "Måler oprettet",              en: "Meter created" },
+  lastDataReceived:        { da: "Seneste data modtaget",       en: "Last data received" },
+  hourly:                  { da: "Timelig",                     en: "Hourly" },
+  daily:                   { da: "Daglig",                      en: "Daily" },
+  high:                    { da: "Høj",                         en: "High" },
+  medium:                  { da: "Middel",                      en: "Medium" },
+  low:                     { da: "Lav",                         en: "Low" },
+
+  // ── Building detail page (restructured) ──
+  metersTab:               { da: "Målere",                      en: "Meters" },
+  reportsTab:              { da: "Rapporter",                   en: "Reports" },
+  activityTab:             { da: "Aktivitet",                   en: "Activity" },
+  buildingInfo:            { da: "Bygningsinformation",         en: "Building Information" },
+  physicalAttributes:      { da: "Fysiske attributter",         en: "Physical Attributes" },
+  contractInfo:            { da: "Kontraktinformation",         en: "Contract Information" },
+  yearBuilt:               { da: "Byggeår",                     en: "Year Built" },
+  buildingDetails:         { da: "Bygningens detaljer",          en: "Building Details" },
+  buildingType:            { da: "Bygningstype",                en: "Building Type" },
+  postalCode:              { da: "Postnummer",                  en: "Postal Code" },
+  municipality:            { da: "Kommune",                     en: "Municipality" },
+  owner:                   { da: "Ejer",                        en: "Owner" },
+  contractStart:           { da: "Kontraktstart",               en: "Contract Start" },
+  contractStatus:          { da: "Kontraktstatus",              en: "Contract Status" },
+  activeMeters:            { da: "Aktive målere",               en: "Active Meters" },
+  connectedSuppliers:      { da: "Tilknyttede leverandører",    en: "Connected Suppliers" },
+  viewAllReports:          { da: "Se alle rapporter",           en: "View all reports" },
+  noReportsForBuilding:    { da: "Ingen specifikke rapporter for denne bygning", en: "No specific reports for this building" },
+  noActivityForBuilding:   { da: "Ingen aktivitet registreret", en: "No activity recorded" },
+
+  // ── Supplier pages ──
+  supplierDetails:         { da: "Leverandørdetaljer",          en: "Supplier Details" },
+  contactInfo:             { da: "Kontaktinformation",          en: "Contact Information" },
+  contact:                 { da: "Kontakt",                     en: "Contact" },
+  phone:                   { da: "Telefon",                     en: "Phone" },
+  utilityTypes:            { da: "Forsyningstyper",             en: "Utility Types" },
+  contractPeriod:          { da: "Kontraktperiode",             en: "Contract Period" },
+  activeTariffs:           { da: "Aktive tariffer",             en: "Active Tariffs" },
+  tariffs:                 { da: "Tariffer",                    en: "Tariffs" },
+  contracts:               { da: "Kontrakter",                  en: "Contracts" },
+  connectedMeters:         { da: "Tilknyttede målere",          en: "Connected Meters" },
+  connectedBuildings:      { da: "Tilknyttede bygninger",       en: "Connected Buildings" },
+  supplierAddress:         { da: "Adresse",                     en: "Address" },
+  tariffCalculator:        { da: "Tarifberegner",               en: "Tariff Calculator" },
+
+  // ── Reports page (portfolio-level) ──
   reportCoolingTitle:      { da: "Afkølingsrapport",            en: "Cooling Analysis Report" },
-  reportCoolingDesc:       { da: "Detaljeret afkølingsanalyse med fremløb, retur og HOFOR-metrikker", en: "Detailed cooling analysis with supply, return and HOFOR metrics" },
+  reportCoolingDesc:       { da: "Porteføljeomspændende afkølingsanalyse på tværs af bygninger og leverandører", en: "Portfolio-wide cooling analysis across buildings and suppliers" },
   reportLegionellaTitle:   { da: "Legionella Compliance",       en: "Legionella Compliance" },
-  reportLegionellaDesc:    { da: "Varmtvandsovervågning og termisk desinfektionslog", en: "Hot water monitoring and thermal disinfection log" },
+  reportLegionellaDesc:    { da: "Aggregeret varmtvandsovervågning og compliance-status på tværs af porteføljen", en: "Aggregated hot water monitoring and compliance status across portfolio" },
+  reportEpcTitle:          { da: "EPC Opgraderingsplan",        en: "EPC Upgrade Plan" },
+  reportEpcDesc:           { da: "Oversigt over energimærkning og opgraderingsbehov for alle bygninger", en: "Overview of energy labels and upgrade requirements for all buildings" },
+  reportConsumptionTitle:  { da: "Forbrugsrapport",             en: "Consumption Report" },
+  reportConsumptionDesc:   { da: "Samlet forbrugsanalyse for varme, vand og el på tværs af porteføljen", en: "Aggregated consumption analysis for heating, water and electricity across portfolio" },
   reportUpdated:           { da: "Senest opdateret",            en: "Last updated" },
-  // v8: Afkøling (kWh/m³) metric
+  portfolioOverview:       { da: "Porteføljeoversigt",          en: "Portfolio Overview" },
+
+  // ── Temporal context ──
+  last12Months:            { da: "Seneste 12 mdr.",              en: "Last 12 months" },
+  currentPeriod:           { da: "Aktuel periode",               en: "Current period" },
+  billingPeriod:           { da: "Regnskabsperiode",             en: "Billing period" },
+  allData:                 { da: "Alle data",                    en: "All data" },
+
+  // ── Afkøling metrics ──
   afkoelingKpi:            { da: "Gns. Afkøling",               en: "Avg. Afkøling" },
   afkoelingUnit:           { da: "kWh/m³",                      en: "kWh/m³" },
   afkoelingTrendTitle:     { da: "Afkøling (kWh/m³) over tid",  en: "Afkøling (kWh/m³) Over Time" },
@@ -238,8 +323,12 @@ export const dict = {
   dateRange:               { da: "Datointerval",                 en: "Date range" },
   startDate:               { da: "Fra",                          en: "From" },
   endDate:                 { da: "Til",                          en: "To" },
-  last12Months:            { da: "Seneste 12 mdr.",              en: "Last 12 months" },
-  allData:                 { da: "Alle data",                    en: "All data" },
+
+  // ── Tooltips ──
+  tooltipAfkoeling:        { da: "Afkøling = (MWh / m³) × 860. Måler effektiviteten af fjernvarmeanlæg. Lavere er bedre.", en: "Afkøling = (MWh / m³) × 860. Measures district heating efficiency. Lower is better." },
+  tooltipEpc:              { da: "Energimærkning (EPC) angiver bygningens energieffektivitet. A er bedst, G er dårligst. Almene boliger skal nå B inden 2030.", en: "Energy Performance Certificate (EPC) rates building energy efficiency. A is best, G is worst. Social housing must reach B by 2030." },
+  tooltipMotivationstarif: { da: "HOFORs motivationstarif belønner/straffer fjernvarmekunder baseret på afkøling. God afkøling = bonus, dårlig = tillæg.", en: "HOFOR's motivational tariff rewards/penalizes district heating customers based on cooling. Good cooling = bonus, poor = surcharge." },
+  tooltipDataQuality:      { da: "Datakvalitet angiver pålideligheden af målerdata. Høj = alle aflæsninger modtaget. Lav = manglende data.", en: "Data quality indicates meter data reliability. High = all readings received. Low = missing data." },
 };
 
 export const t = (k, lang) => dict[k]?.[lang] || dict[k]?.en || k;

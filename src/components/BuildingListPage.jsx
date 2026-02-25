@@ -1,7 +1,8 @@
 import React from "react";
 import { brand, EPC_COLORS } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
-import { buildings } from "@/lib/mockData";
+import { buildings, getMetersForBuilding } from "@/lib/mockData";
+import { StatusBadge } from "@/components/ui/status-badge";
 
 export default function BuildingListPage({ onNavigate }) {
   const lang = useLang();
@@ -23,31 +24,38 @@ export default function BuildingListPage({ onNavigate }) {
                 <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-left">{lang === "da" ? "Navn" : "Name"}</th>
                 <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-left">{t("address", lang)}</th>
                 <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-center">{t("epcRating", lang)}</th>
+                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-center">{t("meterStatus", lang)}</th>
                 <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-right">{t("units", lang)}</th>
-                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-right">{t("activeServices", lang)}</th>
+                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-right">{t("meters", lang)}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {buildings.map(b => (
-                <tr
-                  key={b.id}
-                  onClick={() => onNavigate({ page: "building-detail", buildingId: b.id })}
-                  className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
-                >
-                  <td className="px-5 py-3">
-                    <span className="text-sm font-medium group-hover:text-[#3EB1C8] transition-colors" style={{ color: brand.navy }}>{b.name}</span>
-                  </td>
-                  <td className="px-5 py-3 text-sm text-slate-500">{b.address}</td>
-                  <td className="px-5 py-3 text-center">
-                    <span className="inline-flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold text-white"
-                      style={{ background: EPC_COLORS[b.epc] }}>
-                      {b.epc}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-sm text-right tabular-nums text-slate-600">{b.units}</td>
-                  <td className="px-5 py-3 text-sm text-right tabular-nums text-slate-600">{b.services.length}</td>
-                </tr>
-              ))}
+              {buildings.map(b => {
+                const meterCount = getMetersForBuilding(b.id).length;
+                return (
+                  <tr
+                    key={b.id}
+                    onClick={() => onNavigate({ page: "building-detail", buildingId: b.id })}
+                    className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                  >
+                    <td className="px-5 py-3">
+                      <span className="text-sm font-medium group-hover:text-[#3EB1C8] transition-colors" style={{ color: brand.navy }}>{b.name}</span>
+                    </td>
+                    <td className="px-5 py-3 text-sm text-slate-500">{b.address}</td>
+                    <td className="px-5 py-3 text-center">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold text-white"
+                        style={{ background: EPC_COLORS[b.epc] }}>
+                        {b.epc}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-center">
+                      <StatusBadge status={b.status} lang={lang} />
+                    </td>
+                    <td className="px-5 py-3 text-sm text-right tabular-nums text-slate-600">{b.units}</td>
+                    <td className="px-5 py-3 text-sm text-right tabular-nums text-slate-600">{meterCount}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

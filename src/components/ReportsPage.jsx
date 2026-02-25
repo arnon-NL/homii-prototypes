@@ -1,9 +1,10 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, Thermometer, Shield } from "lucide-react";
-import { brand, Icon } from "@/lib/brand";
+import { ArrowLeft, ArrowRight, Thermometer, Shield, BarChart3, Zap } from "lucide-react";
+import { brand } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
 import { CoolingReport, LegionellaReport } from "./homii-energy-dashboard";
+import { TimePeriodLabel } from "@/components/ui/info-tooltip";
 import Breadcrumbs from "./Breadcrumbs";
 
 const reports = [
@@ -21,6 +22,22 @@ const reports = [
     color: brand.amber,
     titleKey: "reportLegionellaTitle",
     descKey: "reportLegionellaDesc",
+    updatedKey: "reportUpdated",
+  },
+  {
+    id: "epc",
+    icon: BarChart3,
+    color: "#22C55E",
+    titleKey: "reportEpcTitle",
+    descKey: "reportEpcDesc",
+    updatedKey: "reportUpdated",
+  },
+  {
+    id: "consumption",
+    icon: Zap,
+    color: "#F59E0B",
+    titleKey: "reportConsumptionTitle",
+    descKey: "reportConsumptionDesc",
     updatedKey: "reportUpdated",
   },
 ];
@@ -51,18 +68,37 @@ export default function ReportsPage({ onNavigate, reportId }) {
           </div>
           {reportId === "cooling" && <CoolingReport />}
           {reportId === "legionella" && <LegionellaReport />}
+          {reportId === "epc" && (
+            <div className="space-y-4">
+              <div className="text-center py-12 text-slate-400">
+                <BarChart3 size={40} className="mx-auto mb-3 text-slate-300" />
+                <p className="text-sm font-medium" style={{ color: brand.navy }}>{t("reportEpcTitle", lang)}</p>
+                <p className="text-xs text-slate-400 mt-1">{t("portfolioOverview", lang)}</p>
+              </div>
+            </div>
+          )}
+          {reportId === "consumption" && (
+            <div className="space-y-4">
+              <div className="text-center py-12 text-slate-400">
+                <Zap size={40} className="mx-auto mb-3 text-slate-300" />
+                <p className="text-sm font-medium" style={{ color: brand.navy }}>{t("reportConsumptionTitle", lang)}</p>
+                <p className="text-xs text-slate-400 mt-1">{t("portfolioOverview", lang)}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
-  // Report index view
+  // Report index view — portfolio-level
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="px-8 py-6">
-        <div className="flex items-baseline gap-2.5 mb-5">
+        <div className="flex items-center gap-3 mb-5">
           <h1 className="text-xl font-semibold" style={{ color: brand.navy }}>{t("reports", lang)}</h1>
           <span className="text-sm text-slate-400">{reports.length}</span>
+          <TimePeriodLabel text={t("portfolioOverview", lang)} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

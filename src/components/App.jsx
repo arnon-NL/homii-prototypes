@@ -7,8 +7,10 @@ import { t } from "@/lib/i18n";
 import Sidebar from "./Sidebar";
 import BuildingListPage from "./BuildingListPage";
 import BuildingDetailPage from "./BuildingDetailPage";
-import ServiceDetailPage from "./ServiceDetailPage";
+import MeterDetailPage from "./MeterDetailPage";
 import MetersPage from "./MetersPage";
+import SupplierListPage from "./SupplierListPage";
+import SupplierDetailPage from "./SupplierDetailPage";
 import ReportsPage from "./ReportsPage";
 import PlaceholderPage from "./PlaceholderPage";
 
@@ -33,10 +35,14 @@ export default function App() {
         return <BuildingListPage onNavigate={navigate} />;
       case "building-detail":
         return <BuildingDetailPage buildingId={navState.buildingId} onNavigate={navigate} />;
-      case "service-detail":
-        return <ServiceDetailPage buildingId={navState.buildingId} serviceId={navState.serviceId} onNavigate={navigate} />;
       case "meters":
         return <MetersPage onNavigate={navigate} />;
+      case "meter-detail":
+        return <MeterDetailPage meterId={navState.meterId} onNavigate={navigate} />;
+      case "suppliers":
+        return <SupplierListPage onNavigate={navigate} />;
+      case "supplier-detail":
+        return <SupplierDetailPage supplierId={navState.supplierId} onNavigate={navigate} />;
       case "reports":
         return <ReportsPage onNavigate={navigate} reportId={navState.reportId} />;
       default: {

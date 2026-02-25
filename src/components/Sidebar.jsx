@@ -1,22 +1,56 @@
 import React from "react";
-import { Home, Inbox, CheckSquare, BarChart3, Zap, Building2, Gauge } from "lucide-react";
+import { Home, Inbox, CheckSquare, BarChart3, Zap, Building2, Gauge, Truck } from "lucide-react";
 import { brand, HomiiIcon } from "@/lib/brand";
 import { t } from "@/lib/i18n";
-import { buildings } from "@/lib/mockData";
+import { buildings, meters, suppliers } from "@/lib/mockData";
 
 const navItems = [
   { id: "home",      icon: Home,        key: "home" },
   { id: "inbox",     icon: Inbox,       key: "inbox" },
   { id: "tasks",     icon: CheckSquare, key: "tasks" },
-  { id: "reports",   icon: BarChart3,   key: "reports" },
-  { id: "workflows", icon: Zap,         key: "workflows" },
 ];
 
-const meterCount = buildings.flatMap(b => b.services).length;
 const recordItems = [
   { id: "buildings", icon: Building2, key: "buildings", count: buildings.length },
-  { id: "meters",    icon: Gauge,     key: "meters",    count: meterCount },
+  { id: "meters",    icon: Gauge,     key: "meters",    count: meters.length },
+  { id: "suppliers", icon: Truck,     key: "suppliers",  count: suppliers.length },
 ];
+
+const analyseItems = [
+  { id: "reports",   icon: BarChart3, key: "reports" },
+];
+
+const systemItems = [
+  { id: "workflows", icon: Zap,       key: "workflows" },
+];
+
+function NavButton({ item, isActive, onNavigate, lang, showCount }) {
+  const Icon = item.icon;
+  return (
+    <button
+      onClick={() => onNavigate({ page: item.id })}
+      className={`w-full flex items-center gap-2.5 h-8 px-2.5 rounded-md text-[13px] transition-colors ${
+        isActive
+          ? "bg-slate-200/60 text-slate-900 font-medium"
+          : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+      }`}
+    >
+      <Icon size={15} strokeWidth={isActive ? 2 : 1.5} />
+      <span className="flex-1 text-left">{t(item.key, lang)}</span>
+      {showCount && item.count != null && (
+        <span className="text-[10px] text-slate-400 tabular-nums">{item.count}</span>
+      )}
+    </button>
+  );
+}
+
+function SectionLabel({ label }) {
+  return (
+    <div className="px-2.5 py-1 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">
+      {label}
+    </div>
+  );
+}
 
 export default function Sidebar({ activePage, onNavigate, lang, onLangChange }) {
   return (
@@ -33,49 +67,30 @@ export default function Sidebar({ activePage, onNavigate, lang, onLangChange }) 
 
       {/* Navigation */}
       <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto">
-        {navItems.map(item => {
-          const Icon = item.icon;
-          const isActive = activePage === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate({ page: item.id })}
-              className={`w-full flex items-center gap-2.5 h-8 px-2.5 rounded-md text-[13px] transition-colors ${
-                isActive
-                  ? "bg-slate-200/60 text-slate-900 font-medium"
-                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-              }`}
-            >
-              <Icon size={15} strokeWidth={isActive ? 2 : 1.5} />
-              {t(item.key, lang)}
-            </button>
-          );
-        })}
+        {navItems.map(item => (
+          <NavButton key={item.id} item={item} isActive={activePage === item.id} onNavigate={onNavigate} lang={lang} />
+        ))}
 
         <div className="h-px bg-slate-200 my-2 mx-1" />
 
-        <div className="px-2.5 py-1 text-[11px] font-semibold text-slate-500 uppercase tracking-widest">
-          {t("records", lang)}
-        </div>
-        {recordItems.map(item => {
-          const Icon = item.icon;
-          const isActive = activePage === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => onNavigate({ page: item.id })}
-              className={`w-full flex items-center gap-2.5 h-8 px-2.5 rounded-md text-[13px] transition-colors ${
-                isActive
-                  ? "bg-slate-200/60 text-slate-900 font-medium"
-                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-              }`}
-            >
-              <Icon size={15} strokeWidth={isActive ? 2 : 1.5} />
-              <span className="flex-1 text-left">{t(item.key, lang)}</span>
-              <span className="text-[10px] text-slate-400 tabular-nums">{item.count}</span>
-            </button>
-          );
-        })}
+        <SectionLabel label={t("records", lang)} />
+        {recordItems.map(item => (
+          <NavButton key={item.id} item={item} isActive={activePage === item.id} onNavigate={onNavigate} lang={lang} showCount />
+        ))}
+
+        <div className="h-px bg-slate-200 my-2 mx-1" />
+
+        <SectionLabel label={t("analyse", lang)} />
+        {analyseItems.map(item => (
+          <NavButton key={item.id} item={item} isActive={activePage === item.id} onNavigate={onNavigate} lang={lang} />
+        ))}
+
+        <div className="h-px bg-slate-200 my-2 mx-1" />
+
+        <SectionLabel label={t("system", lang)} />
+        {systemItems.map(item => (
+          <NavButton key={item.id} item={item} isActive={activePage === item.id} onNavigate={onNavigate} lang={lang} />
+        ))}
       </nav>
 
       {/* Footer */}
