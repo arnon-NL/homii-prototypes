@@ -21,11 +21,12 @@ const seeded = (seed) => (n) => Math.sin(seed * 137 + n * 31) * 0.5 + 0.5;
    Data generators — values scaled to match lastReading
    ═══════════════════════════════════════════════════════ */
 
-/* Monthly readings — scaled so 12-month sum ≈ lastReading value */
+/* Monthly readings — scaled so Feb (latest month) ≈ lastReading value */
 function generateMonthlyReadings(meter, lang) {
   const ms = MS[lang];
   const r = seeded(meter.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0));
-  const annual = meter.lastReading.value;
+  const latestValue = meter.lastReading.value;
+  const LATEST_MONTH = 1; // Feb = index 1 (latest data month)
 
   // Seasonal profile per utility type
   const profile = meter.type === "fjernvarme"
@@ -35,11 +36,12 @@ function generateMonthlyReadings(meter, lang) {
     : [1.1, 1.05, 1.0, 0.95, 0.9, 0.85, 0.85, 0.9, 0.95, 1.0, 1.05, 1.15];
 
   const factors = ms.map((_, i) => profile[i] + r(i) * 0.15);
-  const sum = factors.reduce((a, b) => a + b, 0);
+  const latestFactor = factors[LATEST_MONTH];
 
+  // Scale so latest month's bar ≈ lastReading.value, others proportional
   return ms.map((month, i) => ({
     name: month,
-    value: +((annual * factors[i]) / sum).toFixed(1),
+    value: +((latestValue * factors[i]) / latestFactor).toFixed(1),
     _monthIdx: i,
   }));
 }
