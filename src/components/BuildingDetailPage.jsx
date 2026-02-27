@@ -168,13 +168,6 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50">
                     <Activity size={14} className="text-slate-400 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium" style={{ color: brand.navy }}>{t("homiiOnboarded", lang)}</p>
-                      <p className="text-xs text-slate-400">{building.homiiOnboarded}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50">
-                    <Activity size={14} className="text-slate-400 mt-0.5" />
-                    <div>
                       <p className="text-sm font-medium" style={{ color: brand.navy }}>{t("yearBuilt", lang)}</p>
                       <p className="text-xs text-slate-400">{building.yearBuilt}</p>
                     </div>
@@ -193,19 +186,17 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
               <AttrRow label={t("municipality", lang)} value={building.municipality} />
               <AttrRow label={t("owner", lang)} value={building.owner} />
               <AttrRow label={t("administrator", lang)} value={building.administrator} />
-              <AttrRow label={t("homiiOnboarded", lang)} value={building.homiiOnboarded} />
-              <AttrRow label={t("homiiStatus", lang)} value={building.homiiStatus} />
             </AttrSection>
 
             <AttrLink
               title={t("relationships", lang)}
               items={[
                 ...meters.map(m => ({
-                  label: `${t("meter", lang)}: ${m.id} (${t(m.type, lang)})`,
+                  label: `${t("meter", lang)}: ${m.id}`,
                   onClick: () => onNavigate({ page: "meter-detail", meterId: m.id }),
                 })),
                 ...suppliers.map(s => ({
-                  label: `${t("supplier", lang)}: ${s.name} (${s.utilityTypes.map(u => t(u, lang)).join(", ")})`,
+                  label: `${t("supplier", lang)}: ${s.name}`,
                   onClick: () => onNavigate({ page: "supplier-detail", supplierId: s.id }),
                 })),
               ]}

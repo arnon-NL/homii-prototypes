@@ -1,4 +1,5 @@
 import React from "react";
+import { ArrowUpRight } from "lucide-react";
 import { brand } from "@/lib/brand";
 
 /**
@@ -60,10 +61,10 @@ export function AttrLink({ title, label, items, onItemClick }) {
           <button
             key={i}
             onClick={() => item.onClick ? item.onClick() : onItemClick?.(item)}
-            className="block text-[12px] font-medium hover:text-[#3EB1C8] transition-colors text-left"
-            style={{ color: brand.navy }}
+            className="group flex items-center gap-1 text-[12px] font-medium text-left transition-colors text-[#3B8EA5] hover:text-[#3EB1C8] hover:underline"
           >
-            {item.label}
+            <span>{item.label}</span>
+            <ArrowUpRight size={11} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
           </button>
         ))}
       </div>
