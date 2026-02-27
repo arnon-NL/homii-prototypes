@@ -352,6 +352,14 @@ export const dict = {
   tooltipEpc:              { da: "Energimærkning (EPC) angiver bygningens energieffektivitet. A er bedst, G er dårligst. Almene boliger skal nå B inden 2030.", en: "Energy Performance Certificate (EPC) rates building energy efficiency. A is best, G is worst. Social housing must reach B by 2030." },
   tooltipMotivationstarif: { da: "HOFORs motivationstarif belønner/straffer fjernvarmekunder baseret på afkøling. God afkøling = bonus, dårlig = tillæg.", en: "HOFOR's motivational tariff rewards/penalizes district heating customers based on cooling. Good cooling = bonus, poor = surcharge." },
   tooltipDataQuality:      { da: "Datakvalitet angiver pålideligheden af målerdata. Høj = alle aflæsninger modtaget. Lav = manglende data.", en: "Data quality indicates meter data reliability. High = all readings received. Low = missing data." },
+
+  // ── Chart drill-down ──
+  clickForDaily:           { da: "Klik på en søjle for daglig visning", en: "Click a bar for daily view" },
+  clickForHourly:          { da: "Klik på en søjle for timevisning", en: "Click a bar for hourly view" },
+  last30d:                 { da: "30 dage",                          en: "30 days" },
+  last90d:                 { da: "90 dage",                          en: "90 days" },
+  last6m:                  { da: "6 mdr.",                           en: "6 months" },
+  last1y:                  { da: "1 år",                             en: "1 year" },
 };
 
 export const t = (k, lang) => dict[k]?.[lang] || dict[k]?.en || k;

@@ -1,10 +1,10 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Flame, Droplets, Zap, Activity } from "lucide-react";
+import { Flame, Droplets, Zap, Activity, ChevronRight } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend, ReferenceLine } from "recharts";
 import { brand, EPC_COLORS, HOFOR } from "@/lib/brand";
-import { t, useLang, MS } from "@/lib/i18n";
+import { t, useLang, MS, ML } from "@/lib/i18n";
 import { getMeter, getBuilding, getSupplier, meters } from "@/lib/mockData";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AttributePanel, AttrSection, AttrRow, AttrLink } from "@/components/ui/attribute-panel";
@@ -14,33 +14,73 @@ import Breadcrumbs from "./Breadcrumbs";
 const typeIcons = { fjernvarme: Flame, vand: Droplets, el: Zap };
 const typeColors = { fjernvarme: "#EF4444", vand: "#3B82F6", el: "#F59E0B" };
 
-/* Generate simulated monthly readings for a meter */
-function generateReadings(meter, lang) {
-  const ms = MS[lang];
-  const seed = meter.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
-  const r = (n) => Math.sin(seed * 137 + n * 31) * 0.5 + 0.5;
+/* ── Seeded pseudo-random helper ── */
+const seeded = (seed) => (n) => Math.sin(seed * 137 + n * 31) * 0.5 + 0.5;
 
-  return ms.map((month, i) => {
-    const isWinter = i < 3 || i > 9;
-    let value;
-    if (meter.type === "fjernvarme") {
-      value = isWinter ? 30 + r(i) * 20 : 5 + r(i) * 10;
-    } else if (meter.type === "vand") {
-      value = 200 + r(i) * 150;
-    } else {
-      value = 4 + r(i) * 6;
-    }
-    return { name: month, value: +value.toFixed(1) };
-  });
+/* ═══════════════════════════════════════════════════════
+   Data generators — values scaled to match lastReading
+   ═══════════════════════════════════════════════════════ */
+
+/* Monthly readings — scaled so 12-month sum ≈ lastReading value */
+function generateMonthlyReadings(meter, lang) {
+  const ms = MS[lang];
+  const r = seeded(meter.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0));
+  const annual = meter.lastReading.value;
+
+  // Seasonal profile per utility type
+  const profile = meter.type === "fjernvarme"
+    ? [1.6, 1.5, 1.3, 0.8, 0.3, 0.1, 0.05, 0.05, 0.3, 0.9, 1.3, 1.6]
+    : meter.type === "vand"
+    ? [1.0, 0.95, 0.95, 1.0, 1.05, 1.1, 1.1, 1.05, 1.0, 0.95, 0.95, 0.95]
+    : [1.1, 1.05, 1.0, 0.95, 0.9, 0.85, 0.85, 0.9, 0.95, 1.0, 1.05, 1.15];
+
+  const factors = ms.map((_, i) => profile[i] + r(i) * 0.15);
+  const sum = factors.reduce((a, b) => a + b, 0);
+
+  return ms.map((month, i) => ({
+    name: month,
+    value: +((annual * factors[i]) / sum).toFixed(1),
+    _monthIdx: i,
+  }));
 }
 
-/* Generate simulated recent readings table — respects readingFrequency */
+/* Daily readings for a given month — scaled to that month's total */
+function generateDailyData(meter, monthIdx, monthlyTotal) {
+  const seed = meter.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
+  const r = (n) => Math.sin(seed * 200 + monthIdx * 50 + n * 13) * 0.5 + 0.5;
+  const daysInMonth = new Date(2026, monthIdx + 1, 0).getDate();
+  const rawValues = Array.from({ length: daysInMonth }, (_, d) => 0.7 + r(d) * 0.6);
+  const rawSum = rawValues.reduce((a, b) => a + b, 0);
+
+  return rawValues.map((v, d) => ({
+    name: `${d + 1}`,
+    day: d + 1,
+    value: +((monthlyTotal * v) / rawSum).toFixed(2),
+  }));
+}
+
+/* Hourly readings for a given day — scaled to that day's total */
+function generateHourlyData(meter, monthIdx, dayOfMonth, dailyTotal) {
+  const seed = meter.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
+  const r = (n) => Math.sin(seed * 300 + monthIdx * 70 + dayOfMonth * 30 + n * 7) * 0.5 + 0.5;
+  // Typical hourly consumption profile
+  const profile = [0.3,0.2,0.2,0.2,0.3,0.5,0.8,1.0,0.9,0.8,0.7,0.7,0.8,0.7,0.7,0.8,0.9,1.0,1.0,0.9,0.8,0.6,0.4,0.3];
+  const rawValues = profile.map((p, h) => p + r(h) * 0.3);
+  const rawSum = rawValues.reduce((a, b) => a + b, 0);
+
+  return rawValues.map((v, h) => ({
+    name: `${String(h).padStart(2, "0")}:00`,
+    value: +((dailyTotal * v) / rawSum).toFixed(3),
+  }));
+}
+
+/* Recent readings table — 48 entries for hourly, 10 for daily */
 function generateRecentReadings(meter) {
   const seed = meter.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
   const r = (n) => Math.sin(seed * 77 + n * 23) * 0.5 + 0.5;
   const baseValue = meter.lastReading.value;
   const isHourly = meter.readingFrequency === "hourly";
-  const count = isHourly ? 24 : 10; // 24 hourly readings or 10 daily readings
+  const count = isHourly ? 48 : 10;
   return Array.from({ length: count }, (_, i) => {
     const date = new Date("2026-02-24T14:00:00");
     if (isHourly) {
@@ -60,18 +100,30 @@ function generateRecentReadings(meter) {
   });
 }
 
-/* Generate temperature data for DH meters (supply/return/cooling) */
-function generateTempData(meter) {
+/* Temperature data for DH meters — configurable number of days */
+function generateTempData(meter, days) {
   const seed = meter.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
   const r = (n) => Math.sin(seed * 100 + n * 17) * 0.5 + 0.5;
-  return Array.from({ length: 30 }, (_, n) => {
-    const day = 30 - n;
-    const isWinter = true; // Feb is winter
+  return Array.from({ length: days }, (_, n) => {
+    const daysAgo = days - n;
+    const d = new Date("2026-02-24");
+    d.setDate(d.getDate() - daysAgo);
+    // Seasonal: winter months (Nov-Feb) are colder → higher supply
+    const month = d.getMonth();
+    const isWinter = month <= 2 || month >= 10;
     const supply = isWinter ? 78 + r(n) * 8 : 68 + r(n) * 6;
     const ret = isWinter ? 42 + r(n + 100) * 12 : 35 + r(n + 100) * 10;
     const cooling = supply - ret;
+    // Label: for ≤90 days show "D-N", for longer show month abbreviation at month boundaries
+    let label;
+    if (days <= 90) {
+      label = `D-${daysAgo}`;
+    } else {
+      label = `${d.getDate() === 1 || n === 0 ? MS.en[month].substring(0,3) : ""}`;
+    }
     return {
-      name: `D-${day}`,
+      name: label || "",
+      fullDate: d.toISOString().split("T")[0],
       supply: +supply.toFixed(1),
       return: +ret.toFixed(1),
       cooling: +cooling.toFixed(1),
@@ -79,6 +131,7 @@ function generateTempData(meter) {
   });
 }
 
+/* ── Shared tooltip ── */
 const BrandTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -95,9 +148,34 @@ const BrandTooltip = ({ active, payload, label }) => {
   );
 };
 
+/* ── Temp tooltip with full date ── */
+const TempTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  const fullDate = payload[0]?.payload?.fullDate || label;
+  return (
+    <div className="rounded-lg px-3 py-2.5 shadow-xl text-xs border" style={{ background: brand.surface, borderColor: brand.border }}>
+      <div className="font-semibold mb-1.5" style={{ color: brand.navy }}>{fullDate}</div>
+      {payload.map((p, idx) => (
+        <div key={idx} className="flex items-center gap-2 py-0.5" style={{ color: brand.text }}>
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
+          <span className="text-slate-500">{p.name}:</span>
+          <span className="font-semibold ml-auto tabular-nums">{typeof p.value === "number" ? p.value.toFixed(1) : p.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════
+   Component
+   ═══════════════════════════════════════════════════════ */
 export default function MeterDetailPage({ meterId, onNavigate }) {
   const lang = useLang();
   const meter = getMeter(meterId);
+
+  /* ── Zoom & range state ── */
+  const [chartZoom, setChartZoom] = useState({ level: "year" });
+  const [tempRange, setTempRange] = useState(30);
 
   if (!meter) return <div className="p-6 text-slate-400">Meter not found</div>;
 
@@ -105,10 +183,31 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
   const supplier = getSupplier(meter.supplierId);
   const SvcIcon = typeIcons[meter.type] || Flame;
   const color = typeColors[meter.type];
+  const isHourly = meter.readingFrequency === "hourly";
 
-  const chartData = useMemo(() => generateReadings(meter, lang), [meter, lang]);
+  /* ── Data ── */
+  const monthlyData = useMemo(() => generateMonthlyReadings(meter, lang), [meter, lang]);
   const recentReadings = useMemo(() => generateRecentReadings(meter), [meter]);
-  const tempData = useMemo(() => meter.type === "fjernvarme" ? generateTempData(meter) : null, [meter]);
+  const tempData = useMemo(() => meter.type === "fjernvarme" ? generateTempData(meter, tempRange) : null, [meter, tempRange]);
+
+  /* Drill-down chart data */
+  const zoomData = useMemo(() => {
+    if (chartZoom.level === "year") return monthlyData;
+    if (chartZoom.level === "month") {
+      const monthValue = monthlyData[chartZoom.monthIdx]?.value || 0;
+      return generateDailyData(meter, chartZoom.monthIdx, monthValue);
+    }
+    if (chartZoom.level === "day") {
+      const monthValue = monthlyData[chartZoom.monthIdx]?.value || 0;
+      const dailyData = generateDailyData(meter, chartZoom.monthIdx, monthValue);
+      const dayValue = dailyData.find(d => d.day === chartZoom.dayOfMonth)?.value || 0;
+      return generateHourlyData(meter, chartZoom.monthIdx, chartZoom.dayOfMonth, dayValue);
+    }
+    return monthlyData;
+  }, [chartZoom, monthlyData, meter]);
+
+  /* Can we drill deeper from current level? */
+  const canDrillDown = chartZoom.level === "year" || (chartZoom.level === "month" && isHourly);
 
   const crumbs = [
     { label: t("meters", lang), onClick: () => onNavigate({ page: "meters" }) },
@@ -118,6 +217,24 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
   const freqLabel = meter.readingFrequency === "hourly" ? t("hourly", lang) : t("daily", lang);
   const qualityLabel = meter.dataQuality === "high" ? t("high", lang) : meter.dataQuality === "medium" ? t("medium", lang) : t("low", lang);
   const qualityColor = meter.dataQuality === "high" ? "#22C55E" : meter.dataQuality === "medium" ? "#F59E0B" : "#EF4444";
+
+  /* Chart period label */
+  const periodLabel = chartZoom.level === "year"
+    ? t("last12Months", lang)
+    : chartZoom.level === "month"
+    ? `${ML[lang][chartZoom.monthIdx]} 2026`
+    : `${chartZoom.dayOfMonth}. ${MS[lang][chartZoom.monthIdx]} 2026`;
+
+  /* Handle bar click for drill-down */
+  const handleBarClick = (data, index) => {
+    if (chartZoom.level === "year") {
+      const monthIdx = data?._monthIdx ?? index;
+      setChartZoom({ level: "month", monthIdx });
+    } else if (chartZoom.level === "month" && isHourly) {
+      const dayOfMonth = data?.day ?? (index + 1);
+      setChartZoom({ ...chartZoom, level: "day", dayOfMonth });
+    }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -191,46 +308,104 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
                     </CardContent></Card>
                   </div>
 
-                  {/* Consumption trend sparkline */}
+                  {/* ── Consumption trend — zoomable ── */}
                   <Card>
                     <CardContent className="p-5">
-                      <div className="flex items-center justify-between mb-3">
+                      {/* Chart header */}
+                      <div className="flex items-center justify-between mb-1">
                         <h3 className="text-[13px] font-semibold text-slate-600">{t("consumptionTrend", lang)}</h3>
-                        <TimePeriodLabel text={t("last12Months", lang)} />
+                        <TimePeriodLabel text={periodLabel} />
                       </div>
+
+                      {/* Zoom breadcrumb */}
+                      {chartZoom.level !== "year" && (
+                        <div className="flex items-center gap-1 text-[11px] text-slate-400 mb-2">
+                          <button onClick={() => setChartZoom({ level: "year" })}
+                            className="hover:text-[#3EB1C8] transition-colors cursor-pointer">
+                            {t("last12Months", lang)}
+                          </button>
+                          <ChevronRight size={10} />
+                          {chartZoom.level === "month" && (
+                            <span className="text-slate-600 font-medium">{ML[lang][chartZoom.monthIdx]}</span>
+                          )}
+                          {chartZoom.level === "day" && (
+                            <>
+                              <button onClick={() => setChartZoom({ level: "month", monthIdx: chartZoom.monthIdx })}
+                                className="hover:text-[#3EB1C8] transition-colors cursor-pointer">
+                                {ML[lang][chartZoom.monthIdx]}
+                              </button>
+                              <ChevronRight size={10} />
+                              <span className="text-slate-600 font-medium">{chartZoom.dayOfMonth}. {MS[lang][chartZoom.monthIdx]}</span>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Drill-down hint */}
+                      {canDrillDown && (
+                        <p className="text-[10px] text-slate-300 mb-2">
+                          {chartZoom.level === "year" ? t("clickForDaily", lang) : t("clickForHourly", lang)}
+                        </p>
+                      )}
+
                       <ResponsiveContainer width="100%" height={200}>
-                        <ComposedChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                        <ComposedChart data={zoomData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                          <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+                          <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false}
+                            interval={chartZoom.level === "day" ? 1 : "preserveStartEnd"} />
                           <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit={` ${meter.lastReading.unit}`} axisLine={false} tickLine={false} />
                           <Tooltip content={<BrandTooltip />} />
-                          <Bar dataKey="value" name={t(meter.type, lang)} fill={color} fillOpacity={0.15} radius={[3, 3, 0, 0]} />
-                          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={{ r: 2.5, fill: color, strokeWidth: 0 }} name={t(meter.type, lang)} />
+                          <Bar dataKey="value" name={t(meter.type, lang)} fill={color} fillOpacity={canDrillDown ? 0.2 : 0.15}
+                            radius={[3, 3, 0, 0]}
+                            cursor={canDrillDown ? "pointer" : "default"}
+                            onClick={(data, index) => canDrillDown && handleBarClick(data, index)} />
+                          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2}
+                            dot={{ r: 2.5, fill: color, strokeWidth: 0 }} name={t(meter.type, lang)} />
                         </ComposedChart>
                       </ResponsiveContainer>
                     </CardContent>
                   </Card>
 
-                  {/* Temperature chart for DH meters: Supply, Return & Cooling */}
+                  {/* ── Temperature chart (DH only) — with range selector ── */}
                   {tempData && (
                     <Card>
                       <CardContent className="p-5">
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="text-[13px] font-semibold text-slate-600">{t("chartTitle", lang)}</h3>
-                          <TimePeriodLabel text={lang === "da" ? "Seneste 30 dage" : "Last 30 days"} />
+                          {/* Time range pills */}
+                          <div className="flex items-center gap-1">
+                            {[
+                              { days: 30, label: t("last30d", lang) },
+                              { days: 90, label: t("last90d", lang) },
+                              { days: 180, label: t("last6m", lang) },
+                              { days: 365, label: t("last1y", lang) },
+                            ].map(opt => (
+                              <button key={opt.days} onClick={() => setTempRange(opt.days)}
+                                className={`px-2.5 py-0.5 text-[11px] rounded-full transition-colors ${
+                                  tempRange === opt.days
+                                    ? "bg-[#3EB1C8] text-white font-medium"
+                                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                                }`}>
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                         <ResponsiveContainer width="100%" height={240}>
                           <ComposedChart data={tempData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                            <XAxis dataKey="name" tick={{ fontSize: 10, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+                            <XAxis dataKey="name" tick={{ fontSize: 10, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false}
+                              interval={tempRange <= 90 ? "preserveStartEnd" : 0} />
                             <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit="°C" domain={[0, 90]} axisLine={false} tickLine={false} />
-                            <Tooltip content={<BrandTooltip />} />
+                            <Tooltip content={<TempTooltip />} />
                             <Legend wrapperStyle={{ fontSize: 11, color: brand.subtle }} iconType="circle" iconSize={8} />
                             <ReferenceLine y={HOFOR.standard.krav} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5}
                               label={{ value: `${lang === "da" ? "Krav" : "Req."}: ${HOFOR.standard.krav}°C`, fill: brand.red, fontSize: 10, position: "right" }} />
                             <Line type="monotone" dataKey="supply" stroke={brand.red} strokeWidth={1.5} dot={false} name={t("supplyLine", lang)} />
                             <Line type="monotone" dataKey="return" stroke={brand.amber} strokeWidth={1.5} dot={false} name={t("returnLine", lang)} />
-                            <Line type="monotone" dataKey="cooling" stroke={brand.blue} strokeWidth={2} dot={{ r: 2, fill: brand.blue, strokeWidth: 0 }} name={t("coolingLine", lang)} />
+                            <Line type="monotone" dataKey="cooling" stroke={brand.blue} strokeWidth={2}
+                              dot={tempRange <= 90 ? { r: 2, fill: brand.blue, strokeWidth: 0 } : false}
+                              name={t("coolingLine", lang)} />
                           </ComposedChart>
                         </ResponsiveContainer>
                       </CardContent>
@@ -244,11 +419,11 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
                 <div className="mt-4">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold" style={{ color: brand.navy }}>{t("recentReadings", lang)}</h3>
-                    <TimePeriodLabel text={t("last12Months", lang)} />
+                    <TimePeriodLabel text={isHourly ? (lang === "da" ? "Seneste 48 timer" : "Last 48 hours") : t("last12Months", lang)} />
                   </div>
-                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white max-h-[500px] overflow-y-auto">
                     <table className="w-full text-sm">
-                      <thead>
+                      <thead className="sticky top-0 z-10">
                         <tr className="border-b border-slate-200 bg-slate-50/80">
                           <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-left">{t("date", lang)}</th>
                           <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-right">{t("value", lang)}</th>
