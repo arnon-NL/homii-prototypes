@@ -2,8 +2,8 @@ import React, { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Flame, Droplets, Zap, Activity } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart } from "recharts";
-import { brand, EPC_COLORS } from "@/lib/brand";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend, ReferenceLine } from "recharts";
+import { brand, EPC_COLORS, HOFOR } from "@/lib/brand";
 import { t, useLang, MS } from "@/lib/i18n";
 import { getMeter, getBuilding, getSupplier, meters } from "@/lib/mockData";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -34,20 +34,47 @@ function generateReadings(meter, lang) {
   });
 }
 
-/* Generate simulated recent readings table */
+/* Generate simulated recent readings table — respects readingFrequency */
 function generateRecentReadings(meter) {
   const seed = meter.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
   const r = (n) => Math.sin(seed * 77 + n * 23) * 0.5 + 0.5;
   const baseValue = meter.lastReading.value;
-  return Array.from({ length: 10 }, (_, i) => {
-    const daysAgo = i * 7;
-    const date = new Date("2026-02-24");
-    date.setDate(date.getDate() - daysAgo);
-    const diff = r(i) * (baseValue * 0.02);
+  const isHourly = meter.readingFrequency === "hourly";
+  const count = isHourly ? 24 : 10; // 24 hourly readings or 10 daily readings
+  return Array.from({ length: count }, (_, i) => {
+    const date = new Date("2026-02-24T14:00:00");
+    if (isHourly) {
+      date.setHours(date.getHours() - i);
+    } else {
+      date.setDate(date.getDate() - i);
+    }
+    const diff = r(i) * (baseValue * 0.005);
+    const dateStr = isHourly
+      ? `${date.toISOString().split("T")[0]} ${String(date.getHours()).padStart(2,"0")}:00`
+      : date.toISOString().split("T")[0];
     return {
-      date: date.toISOString().split("T")[0],
-      value: +(baseValue - diff * i * 0.3).toFixed(1),
+      date: dateStr,
+      value: +(baseValue - diff * i * 0.1).toFixed(1),
       unit: meter.lastReading.unit,
+    };
+  });
+}
+
+/* Generate temperature data for DH meters (supply/return/cooling) */
+function generateTempData(meter) {
+  const seed = meter.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
+  const r = (n) => Math.sin(seed * 100 + n * 17) * 0.5 + 0.5;
+  return Array.from({ length: 30 }, (_, n) => {
+    const day = 30 - n;
+    const isWinter = true; // Feb is winter
+    const supply = isWinter ? 78 + r(n) * 8 : 68 + r(n) * 6;
+    const ret = isWinter ? 42 + r(n + 100) * 12 : 35 + r(n + 100) * 10;
+    const cooling = supply - ret;
+    return {
+      name: `D-${day}`,
+      supply: +supply.toFixed(1),
+      return: +ret.toFixed(1),
+      cooling: +cooling.toFixed(1),
     };
   });
 }
@@ -81,6 +108,7 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
 
   const chartData = useMemo(() => generateReadings(meter, lang), [meter, lang]);
   const recentReadings = useMemo(() => generateRecentReadings(meter), [meter]);
+  const tempData = useMemo(() => meter.type === "fjernvarme" ? generateTempData(meter) : null, [meter]);
 
   const crumbs = [
     { label: t("meters", lang), onClick: () => onNavigate({ page: "meters" }) },
@@ -182,6 +210,32 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
                       </ResponsiveContainer>
                     </CardContent>
                   </Card>
+
+                  {/* Temperature chart for DH meters: Supply, Return & Cooling */}
+                  {tempData && (
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-[13px] font-semibold text-slate-600">{t("chartTitle", lang)}</h3>
+                          <TimePeriodLabel text={lang === "da" ? "Seneste 30 dage" : "Last 30 days"} />
+                        </div>
+                        <ResponsiveContainer width="100%" height={240}>
+                          <ComposedChart data={tempData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                            <XAxis dataKey="name" tick={{ fontSize: 10, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit="°C" domain={[0, 90]} axisLine={false} tickLine={false} />
+                            <Tooltip content={<BrandTooltip />} />
+                            <Legend wrapperStyle={{ fontSize: 11, color: brand.subtle }} iconType="circle" iconSize={8} />
+                            <ReferenceLine y={HOFOR.standard.krav} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5}
+                              label={{ value: `${lang === "da" ? "Krav" : "Req."}: ${HOFOR.standard.krav}°C`, fill: brand.red, fontSize: 10, position: "right" }} />
+                            <Line type="monotone" dataKey="supply" stroke={brand.red} strokeWidth={1.5} dot={false} name={t("supplyLine", lang)} />
+                            <Line type="monotone" dataKey="return" stroke={brand.amber} strokeWidth={1.5} dot={false} name={t("returnLine", lang)} />
+                            <Line type="monotone" dataKey="cooling" stroke={brand.blue} strokeWidth={2} dot={{ r: 2, fill: brand.blue, strokeWidth: 0 }} name={t("coolingLine", lang)} />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               </TabsContent>
 

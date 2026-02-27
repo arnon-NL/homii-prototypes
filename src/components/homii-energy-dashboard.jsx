@@ -328,7 +328,6 @@ function ConsumptionDash() {
               <Tooltip content={<BrandTooltip/>}/>
               <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
               <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`${t("req",lang)}: ${thr}°C`,fill:brand.red,fontSize:10,position:"right"}}/>
-              <Area type="monotone" dataKey="cooling" fill={brand.blue} fillOpacity={0.06} stroke="none" name={t("coolingArea",lang)}/>
               <Line type="monotone" dataKey="supply" stroke={brand.red} strokeWidth={1.5} dot={false} name={t("supplyLine",lang)}/>
               <Line type="monotone" dataKey="return" stroke={brand.amber} strokeWidth={1.5} dot={false} name={t("returnLine",lang)}/>
               <Line type="monotone" dataKey="cooling" stroke={brand.blue} strokeWidth={2} dot={{r:2.5,fill:brand.blue,strokeWidth:0}} name={t("coolingLine",lang)}/>
@@ -371,7 +370,7 @@ function ConsumptionDash() {
               {/* Shaded area above threshold = surcharge zone */}
               <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5}
                 label={{value:`${t("hoforThreshold",lang)}: ${thr} kWh/m³`,fill:brand.red,fontSize:10,position:"right"}} />
-              <Area type="monotone" dataKey="afkoeling" fill={brand.blue} fillOpacity={0.08} stroke="none" name={t("afkoelingLine",lang)} />
+              <Area type="monotone" dataKey="afkoeling" fill={brand.blue} fillOpacity={0.08} stroke="none" legendType="none" />
               <Line type="monotone" dataKey="afkoeling" stroke={brand.blue} strokeWidth={2} dot={{r:2.5,fill:brand.blue,strokeWidth:0}} name={t("afkoelingLine",lang)} />
               {compareData && (
                 <Line type="monotone" data={compareData} dataKey="afkoeling" stroke={brand.midBlue} strokeWidth={1.5} strokeDasharray="6 3" dot={false}
@@ -715,7 +714,7 @@ export function CoolingReport({ onNavigate }) {
             <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
             <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5}
               label={{value:`${t("hoforThreshold",lang)}: ${thr} kWh/m³`,fill:brand.red,fontSize:10,position:"right"}} />
-            <Area type="monotone" dataKey="afkoeling" fill={brand.blue} fillOpacity={0.08} stroke="none" name={t("afkoelingLine",lang)} />
+            <Area type="monotone" dataKey="afkoeling" fill={brand.blue} fillOpacity={0.08} stroke="none" legendType="none" />
             <Line type="monotone" dataKey="afkoeling" stroke={brand.blue} strokeWidth={2} dot={{r:2.5,fill:brand.blue,strokeWidth:0}} name={t("afkoelingLine",lang)} />
             {compareData && (
               <Line type="monotone" data={compareData} dataKey="afkoeling" stroke={brand.midBlue} strokeWidth={1.5} strokeDasharray="6 3" dot={false}
@@ -734,7 +733,7 @@ export function CoolingReport({ onNavigate }) {
             <YAxis tick={{fontSize:11, fill:brand.muted}} unit="°C" domain={[0, 90]} axisLine={false} tickLine={false} />
             <Tooltip content={<BrandTooltip/>}/>
             <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
-            <Area type="monotone" dataKey="cooling" fill={brand.blue} fillOpacity={0.06} stroke="none" name={t("coolingArea",lang)}/>
+            <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`${t("req",lang)}: ${thr}°C`,fill:brand.red,fontSize:10,position:"right"}}/>
             <Line type="monotone" dataKey="supply" stroke={brand.red} strokeWidth={1.5} dot={false} name={t("supplyLine",lang)}/>
             <Line type="monotone" dataKey="return" stroke={brand.amber} strokeWidth={1.5} dot={false} name={t("returnLine",lang)}/>
             <Line type="monotone" dataKey="cooling" stroke={brand.blue} strokeWidth={2} dot={{r:2.5,fill:brand.blue,strokeWidth:0}} name={t("coolingLine",lang)}/>

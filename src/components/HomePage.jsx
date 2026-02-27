@@ -6,8 +6,9 @@ import { buildings, meters, getMetersForBuilding } from "@/lib/mockData";
 import {
   Building2, Gauge, TrendingDown, AlertTriangle, ArrowRight,
   Zap, Flame, Shield, Award, Target, Sparkles, ChevronDown,
-  ChevronUp, ExternalLink,
+  ChevronUp, ExternalLink, BookOpen,
 } from "lucide-react";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 /* ═══════════════════════════════════════════════════════
    Reuse the recommendation engine from SmartInsights
@@ -266,6 +267,53 @@ function CategoryFilter({ category, count, savings, active, onClick, lang }) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   Savings Methodology Panel — expandable documentation
+   ═══════════════════════════════════════════════════════ */
+function MethodologyPanel({ lang }) {
+  const [open, setOpen] = useState(false);
+  const methods = [
+    { titleKey: "methodTariffTitle", descKey: "methodTariffDesc", icon: Flame, color: "#EF4444" },
+    { titleKey: "methodEpcTitle", descKey: "methodEpcDesc", icon: Award, color: "#F59E0B" },
+    { titleKey: "methodLegionellaTitle", descKey: "methodLegionellaDesc", icon: Shield, color: "#3B82F6" },
+    { titleKey: "methodHeatingTitle", descKey: "methodHeatingDesc", icon: TrendingDown, color: "#22C55E" },
+    { titleKey: "methodSubmeteringTitle", descKey: "methodSubmeteringDesc", icon: Zap, color: "#8B5CF6" },
+  ];
+
+  return (
+    <div className="mt-1">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors"
+      >
+        <BookOpen size={12} />
+        {t("savingsMethodology", lang)}
+        {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+      </button>
+      {open && (
+        <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4 space-y-3">
+          <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">{t("savingsMethodologySub", lang)}</p>
+          {methods.map(m => {
+            const MIcon = m.icon;
+            return (
+              <div key={m.titleKey} className="flex items-start gap-2.5">
+                <div className="w-6 h-6 rounded flex items-center justify-center shrink-0 mt-0.5" style={{ background: m.color + "12" }}>
+                  <MIcon size={12} style={{ color: m.color }} />
+                </div>
+                <div>
+                  <p className="text-[12px] font-semibold" style={{ color: brand.navy }}>{t(m.titleKey, lang)}</p>
+                  <p className="text-[11px] text-slate-500 leading-relaxed">{t(m.descKey, lang)}</p>
+                </div>
+              </div>
+            );
+          })}
+          <p className="text-[10px] text-slate-400 italic border-t border-slate-100 pt-2">{t("methodDisclaimer", lang)}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
    Home Page
    ═══════════════════════════════════════════════════════ */
 export default function HomePage({ onNavigate }) {
@@ -341,13 +389,22 @@ export default function HomePage({ onNavigate }) {
             sub={`${highCount} ${lang === "da" ? "høj prioritet" : "high priority"}`}
             color={criticalCount > 0 ? brand.red : brand.green}
           />
-          <KpiCard
-            icon={TrendingDown}
-            label={lang === "da" ? "Besparelsespotentiale" : "Savings Potential"}
-            value={`${(totalSaving / 1000).toFixed(0)}k`}
-            sub={`DKK/${lang === "da" ? "år" : "yr"} · ${allRecs.length} ${t("insightsCount", lang)}`}
-            color={brand.green}
-          />
+          <Card>
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: brand.green + "12" }}>
+                <TrendingDown size={18} style={{ color: brand.green }} />
+              </div>
+              <div>
+                <div className="flex items-center gap-1">
+                  <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">{lang === "da" ? "Besparelsespotentiale" : "Savings Potential"}</p>
+                  <InfoTooltip text={t("tooltipSavings", lang)} />
+                </div>
+                <p className="text-xl font-bold tabular-nums" style={{ color: brand.navy }}>{`${(totalSaving / 1000).toFixed(0)}k`}</p>
+                <p className="text-[11px] text-slate-400">{`DKK/${lang === "da" ? "år" : "yr"} · ${allRecs.length} ${t("insightsCount", lang)}`}</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Smart Insights Section */}
@@ -373,6 +430,9 @@ export default function HomePage({ onNavigate }) {
               <p className="text-[10px] text-slate-400 uppercase tracking-wider">{t("totalPotential", lang)}</p>
             </div>
           </div>
+
+          {/* Methodology — expandable documentation */}
+          <MethodologyPanel lang={lang} />
 
           {/* Category filters */}
           <div className="flex flex-wrap items-center gap-1">

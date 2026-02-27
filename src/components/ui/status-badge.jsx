@@ -11,12 +11,25 @@ const variants = {
   neutral: { bg: "bg-slate-100",  text: "text-slate-500" },
 };
 
-export function StatusBadge({ status, label, size = "sm" }) {
+/* Status → display label map (supports da/en) */
+const statusLabels = {
+  active:  { da: "Aktiv",     en: "Active" },
+  success: { da: "Succes",    en: "Success" },
+  good:    { da: "God",       en: "Good" },
+  warning: { da: "Advarsel",  en: "Warning" },
+  offline: { da: "Offline",   en: "Offline" },
+  error:   { da: "Fejl",      en: "Error" },
+  bad:     { da: "Dårlig",    en: "Bad" },
+  neutral: { da: "Neutral",   en: "Neutral" },
+};
+
+export function StatusBadge({ status, label, lang = "da", size = "sm" }) {
   const v = variants[status] || variants.neutral;
   const sizeClass = size === "xs" ? "text-[9px] px-1.5 py-0" : "text-[10px] px-2 py-0.5";
+  const displayLabel = label || statusLabels[status]?.[lang] || statusLabels[status]?.en || status;
   return (
     <span className={`inline-flex items-center rounded-full font-medium ${v.bg} ${v.text} ${sizeClass}`}>
-      {label}
+      {displayLabel}
     </span>
   );
 }

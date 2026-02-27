@@ -23,10 +23,10 @@ export function InfoTooltip({ text, size = 13 }) {
   );
 }
 
-export function TimePeriodLabel({ period, className = "" }) {
+export function TimePeriodLabel({ text, period, className = "" }) {
   return (
     <span className={`text-[10px] font-medium text-slate-400 bg-slate-100 rounded px-1.5 py-0.5 ${className}`}>
-      {period}
+      {text || period}
     </span>
   );
 }

@@ -192,6 +192,7 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
               <AttrRow label={t("postalCode", lang)} value={building.postalCode} />
               <AttrRow label={t("municipality", lang)} value={building.municipality} />
               <AttrRow label={t("owner", lang)} value={building.owner} />
+              <AttrRow label={t("administrator", lang)} value={building.administrator} />
               <AttrRow label={t("contractStart", lang)} value={building.contractStart} />
               <AttrRow label={t("contractStatus", lang)} value={building.contractStatus} />
             </AttrSection>
@@ -200,11 +201,11 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
               title={t("relationships", lang)}
               items={[
                 ...meters.map(m => ({
-                  label: `${t("meter", lang)}: ${m.id}`,
+                  label: `${t("meter", lang)}: ${m.id} (${t(m.type, lang)})`,
                   onClick: () => onNavigate({ page: "meter-detail", meterId: m.id }),
                 })),
                 ...suppliers.map(s => ({
-                  label: `${t("supplier", lang)}: ${s.name}`,
+                  label: `${t("supplier", lang)}: ${s.name} (${s.utilityTypes.map(u => t(u, lang)).join(", ")})`,
                   onClick: () => onNavigate({ page: "supplier-detail", supplierId: s.id }),
                 })),
               ]}
