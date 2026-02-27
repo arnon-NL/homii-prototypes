@@ -51,15 +51,15 @@ export function AttrRow({ label, value, onClick, color }) {
   );
 }
 
-export function AttrLink({ label, items, onItemClick }) {
+export function AttrLink({ title, label, items, onItemClick }) {
   return (
     <div>
-      <span className="text-[11px] text-slate-400 block mb-1">{label}</span>
+      <h3 className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2.5">{title || label}</h3>
       <div className="space-y-1">
         {items.map((item, i) => (
           <button
             key={i}
-            onClick={() => onItemClick?.(item)}
+            onClick={() => item.onClick ? item.onClick() : onItemClick?.(item)}
             className="block text-[12px] font-medium hover:text-[#3EB1C8] transition-colors text-left"
             style={{ color: brand.navy }}
           >
