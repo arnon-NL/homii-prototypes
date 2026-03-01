@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 
 import { brand, yearColor, HOFOR, Icon } from "@/lib/brand";
 import { useLang, t, MS, ML } from "@/lib/i18n";
-import { meters as allMeters, buildings, getBuilding, suppliers, getDhMetersSummary, getAfkoelingTimeSeries, getAfkoelingAggregated, getGraddageForMeter, GK, GN, GNT } from "@/lib/mockData";
+import { meters as allMeters, buildings, getBuilding, suppliers, getDhMetersSummary, getAfkoelingAggregated, getGraddageForMeter, GK, GN, GNT } from "@/lib/mockData";
 
 /* ═══════════════════════════════════════════════════════
    Custom SegmentedControl (Notion-style)
@@ -62,30 +62,6 @@ function mkCooling(period, meter, lang) {
 
 function mkBar(lang) {
   return MS[lang].map((m,mi)=>{const e={name:m};[2022,2023,2024,2025,2026].forEach(y=>{e[`h${y}`]=+(mi<3||mi>9?120+Math.sin(y+mi)*30:25+Math.sin(y+mi)*15).toFixed(1);e[`e${y}`]=+(45+Math.sin(y*2+mi)*12).toFixed(1);e[`w${y}`]=+(800+Math.sin(y+mi*2)*200).toFixed(0);});return e;});
-}
-
-function mkLegionella(building) {
-  const seed = building === "all" ? 7 : building.charCodeAt(building.length - 1);
-  const r = (n) => Math.sin(seed * 100 + n * 13) * 0.5 + 0.5;
-  const days = Array.from({ length: 30 }, (_, n) => {
-    const day = 30 - n;
-    const baseT = 56 + r(n) * 6;
-    const tapDrop = 4 + r(n + 50) * 5;
-    const dip = n === 12 || n === 22 ? -8 * r(n + 200) : 0;
-    return { name: `D-${day}`, day, tank: +(baseT + dip).toFixed(1), tap: +(baseT - tapDrop + dip * 0.7).toFixed(1) };
-  }).reverse();
-  const disinfections = [
-    { date: "2026-02-18", duration: 45, peakTemp: 65.2, ok: true },
-    { date: "2026-02-04", duration: 40, peakTemp: 62.8, ok: true },
-    { date: "2026-01-21", duration: 35, peakTemp: 58.1, ok: false },
-    { date: "2026-01-07", duration: 50, peakTemp: 66.4, ok: true },
-    { date: "2025-12-23", duration: 42, peakTemp: 63.5, ok: true },
-  ];
-  const currentTank = days[days.length - 1].tank;
-  const currentTap = days[days.length - 1].tap;
-  const minTap24h = Math.min(...days.slice(-3).map(d => d.tap));
-  const complianceHours = days.filter(d => d.tap >= 50).length;
-  return { days, disinfections, currentTank, currentTap, minTap24h, compliancePct: +((complianceHours / days.length) * 100).toFixed(0) };
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -982,17 +958,14 @@ export function GraddageReport({ navigate }) {
 
   // DH meters only
   const dhMeters = useMemo(() => allMeters.filter(m => m.type === "fjernvarme"), []);
-  const dhSupplierIds = [...new Set(dhMeters.map(m => {
-    const bldg = buildings.find(b => b.id === m.buildingId);
-    return bldg?.supplierId;
-  }).filter(Boolean))];
+  const dhSupplierIds = [...new Set(dhMeters.map(m => m.supplierId).filter(Boolean))];
   const dhSuppliers = dhSupplierIds.map(id => suppliers.find(s => s.id === id)).filter(Boolean);
 
   // Filtered meters
   const filtered = useMemo(() => {
     let list = dhMeters.map(m => {
       const bldg = buildings.find(b => b.id === m.buildingId);
-      return { ...m, buildingName: bldg?.name || "", supplierId: bldg?.supplierId, area: bldg?.area || 0 };
+      return { ...m, buildingName: bldg?.name || "", area: bldg?.area || 0 };
     });
     if (supplierFilter !== "all") list = list.filter(m => m.supplierId === supplierFilter);
     if (search.trim()) {
@@ -1073,44 +1046,18 @@ export function GraddageReport({ navigate }) {
   // Meter colors for chart lines
   const COLORS = [brand.blue, brand.midBlue, brand.amber, brand.green, "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#6366F1", "#84CC16"];
 
-  return (
-    <div className="space-y-6">
-      {/* Header & filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-lg font-semibold" style={{ color: brand.navy }}>{t("reportGraddageTitle", lang)}</h2>
-        <div className="flex items-center gap-1.5 ml-auto">
-          {dhSuppliers.length > 1 && (
-            <Select value={supplierFilter} onValueChange={setSupplierFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("allSuppliers", lang)}</SelectItem>
-                {dhSuppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          )}
-          <input
-            type="text" placeholder={t("searchMeter", lang)} value={search} onChange={e => setSearch(e.target.value)}
-            className="h-8 w-[180px] rounded-md border border-slate-200 px-2.5 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#3EB1C8]"
-          />
-        </div>
-      </div>
+  const selectAllMeters = () => setVisibleMeterIds(null);
+  const deselectAllMeters = () => setVisibleMeterIds(new Set());
 
-      {/* Year pills + period toggle */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 rounded-full bg-slate-100 p-0.5">
-          {[2022, 2023, 2024, 2025, 2026].map(y => (
-            <button key={y} onClick={() => tog(y)}
-              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all duration-200 ${vis.includes(y) ? "text-white shadow-sm" : "text-slate-500 bg-transparent hover:bg-slate-100"}`}
-              style={vis.includes(y) ? { background: yearColor[y] } : {}}>
-              {y}
-            </button>
-          ))}
-        </div>
+  return (
+    <div className="space-y-5">
+      {/* Header + period control — matches CoolingReport pattern */}
+      <SectionHeader title={t("reportGraddageTitle", lang)} description={t("reportGraddageDesc", lang)}>
         <SegmentedControl value={period} onChange={v => v && setPeriod(v)} options={[
           { value: "monthly", label: t("monthly", lang) },
           { value: "yearly", label: t("yearlyTotal", lang) },
         ]} />
-      </div>
+      </SectionHeader>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1120,23 +1067,40 @@ export function GraddageReport({ navigate }) {
         <Metric label={t("dhMetersCount", lang)} value={`${filtered.length}`} sub={`${visibleSet.size} ${t("selected", lang)}`} />
       </div>
 
-      {/* Meter chips */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <button onClick={() => visibleMeterIds ? setVisibleMeterIds(null) : setVisibleMeterIds(new Set())}
-          className="text-[10px] text-slate-400 hover:text-slate-600 mr-1">
-          {visibleMeterIds ? t("selectAll", lang) : t("deselectAll", lang)}
-        </button>
-        {filtered.map((m, idx) => {
-          const on = visibleSet.has(m.id);
-          const col = COLORS[idx % COLORS.length];
-          return (
-            <button key={m.id} onClick={() => toggleMeter(m.id)}
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition-all border ${on ? "text-white border-transparent shadow-sm" : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"}`}
-              style={on ? { background: col } : {}}>
-              {m.id}
+      {/* Meter (de)selection chips — matches CoolingReport pattern */}
+      <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("selectedMeters", lang)} ({visibleSet.size} / {filtered.length})</span>
+          <div className="flex gap-2">
+            <button onClick={selectAllMeters} className="text-[11px] font-medium px-2 py-0.5 rounded hover:bg-slate-100 transition-colors" style={{ color: brand.blue }}>{t("selectAll", lang)}</button>
+            <button onClick={deselectAllMeters} className="text-[11px] font-medium px-2 py-0.5 rounded hover:bg-slate-100 transition-colors text-slate-400">{t("deselectAll", lang)}</button>
+          </div>
+        </div>
+        {/* Year pills */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mr-1">{t("showYears", lang)}</span>
+          {[2022, 2023, 2024, 2025, 2026].map(y => (
+            <button key={y} onClick={() => tog(y)}
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all duration-200 ${vis.includes(y) ? "text-white shadow-sm" : "text-slate-500 bg-transparent hover:bg-slate-100"}`}
+              style={vis.includes(y) ? { background: yearColor[y] } : {}}>
+              {y}
             </button>
-          );
-        })}
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {filtered.map((m, idx) => {
+            const on = visibleSet.has(m.id);
+            const col = COLORS[idx % COLORS.length];
+            return (
+              <button key={m.id} onClick={() => toggleMeter(m.id)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${on ? "border-transparent text-white shadow-sm" : "border-slate-200 text-slate-400 bg-white hover:bg-slate-50"}`}
+                style={on ? { backgroundColor: col } : {}}>
+                <span className={`w-2 h-2 rounded-full border ${on ? "bg-white border-white/50" : "border-slate-300"}`} />
+                {m.buildingName}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* GAF Chart */}
@@ -1180,8 +1144,22 @@ export function GraddageReport({ navigate }) {
         </ResponsiveContainer>
       </SectionCard>
 
-      {/* Meter comparison table */}
+      {/* Meter comparison table — with supplier filter + search (matches CoolingReport pattern) */}
       <SectionCard title={t("meterComparison", lang)} noPad>
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-100">
+          <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+            <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("allSuppliers", lang)}</SelectItem>
+              {dhSuppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <input
+            type="text" placeholder={t("searchMeter", lang)} value={search} onChange={e => setSearch(e.target.value)}
+            className="h-8 w-[180px] rounded-md border border-slate-200 px-2.5 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#3EB1C8]"
+          />
+          <span className="ml-auto text-[11px] text-slate-400">{filtered.length} {t("meters", lang)}</span>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
@@ -1215,212 +1193,6 @@ export function GraddageReport({ navigate }) {
             </tbody>
           </table>
         </div>
-      </SectionCard>
-    </div>
-  );
-}
-
-export function LegionellaReport({ navigate }) {
-  const lang = useLang();
-  const fjernvarmeMeters = allMeters.filter(m => m.type === "fjernvarme");
-  const [selectedMeter, setSelectedMeter] = useState("all");
-  const lData = useMemo(() => mkLegionella(selectedMeter), [selectedMeter]);
-
-  const meterOptions = [
-    { id: "all", l: lang === "da" ? "Alle fjernvarmemålere (samlet)" : "All DH meters (aggregated)" },
-    ...fjernvarmeMeters.map(m => {
-      const bldg = getBuilding(m.buildingId);
-      return { id: m.id, l: `${m.id} — ${bldg?.name || m.buildingId}` };
-    }),
-  ];
-
-  // Reinterpret: "tank" = supply/circulation temp from meter, "tap" = return temp at furthest point
-  const riskLevel = lData.currentTap >= 55 ? "low" : lData.currentTap >= 50 ? "medium" : "high";
-  const riskColor = { low: brand.green, medium: brand.amber, high: brand.red }[riskLevel];
-  const riskLabel = { low: t("riskLow", lang), medium: t("riskMedium", lang), high: t("riskHigh", lang) }[riskLevel];
-
-  const GaugeBar = () => {
-    const temp = lData.currentTap;
-    const pct = Math.min(100, Math.max(0, ((temp - 20) / 50) * 100));
-    return (
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-[11px] text-slate-400">
-          <span>20°C</span>
-          <span className="font-medium text-slate-500">{t("tempGauge", lang)}</span>
-          <span>70°C</span>
-        </div>
-        <div className="relative h-5 rounded-full overflow-hidden bg-slate-100">
-          <div className="absolute h-full opacity-10" style={{ left: "10%", width: "40%", background: brand.red }} />
-          <div className="absolute h-full w-px bg-red-400 z-10" style={{ left: "60%" }} />
-          <div className="absolute h-full w-px z-10" style={{ left: "70%", background: brand.amber }} />
-          <div className="absolute h-full rounded-full transition-all duration-500" style={{
-            width: `${pct}%`,
-            background: `linear-gradient(to right, ${brand.red}, ${brand.amber}, ${brand.green})`,
-            opacity: 0.6,
-          }} />
-          <div className="absolute top-0 h-full w-0.5 bg-white z-20 shadow" style={{ left: `${pct}%` }}>
-            <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-bold whitespace-nowrap px-1.5 py-0.5 rounded" style={{ background: riskColor, color: "#fff" }}>
-              {temp}°C
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-between text-[10px] text-slate-400">
-          <span style={{ marginLeft: "10%" }}>{t("dangerZone", lang)}</span>
-          <span>50°C {lang === "da" ? "lovkrav" : "legal min"}</span>
-          <span>55°C {lang === "da" ? "anbef." : "rec."}</span>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className="space-y-5">
-      <SectionHeader
-        title={lang === "da" ? "Legionella – Temperaturovervågning" : "Legionella – Temperature Monitoring"}
-        description={lang === "da"
-          ? "Legionellarisiko overvåges via returtemperatur på fjernvarmemålere. Når cirkulationstemperaturen falder under 50°C opstår risiko for legionellavækst. Samme målere der registrerer afkøling bruges til temperaturalarm."
-          : "Legionella risk is monitored via return temperature on district heating meters. When circulation temperature drops below 50°C, legionella growth risk occurs. The same meters that register cooling are used for temperature alerts."}
-      >
-        <Select value={selectedMeter} onValueChange={setSelectedMeter}>
-          <SelectTrigger className="w-[280px] h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>{meterOptions.map(m => <SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}</SelectContent>
-        </Select>
-        {selectedMeter !== "all" && navigate && (
-          <button
-            onClick={() => navigate(`/meters/${selectedMeter}`)}
-            className="text-[11px] font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors"
-            style={{ color: brand.blue }}
-          >
-            {lang === "da" ? "Åbn måler →" : "Open meter →"}
-          </button>
-        )}
-      </SectionHeader>
-
-      {/* Meter selection chips */}
-      <div className="flex flex-wrap gap-2">
-        {meterOptions.map(m => (
-          <button
-            key={m.id}
-            onClick={() => setSelectedMeter(m.id)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-              selectedMeter === m.id
-                ? "bg-white shadow-sm border-slate-200 text-slate-900"
-                : "bg-transparent border-transparent text-slate-500 hover:bg-slate-100"
-            }`}
-          >
-            {m.id !== "all" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
-            {m.l}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Metric
-          label={lang === "da" ? "Cirkulationstemperatur" : "Circulation Temp."}
-          value={lData.currentTank} unit="°C"
-          sub={lData.currentTank >= 55 ? t("aboveRec", lang) : lData.currentTank >= 50 ? t("aboveLegal", lang) : t("belowLegal", lang)}
-          status={lData.currentTank >= 55 ? "good" : lData.currentTank >= 50 ? "warn" : "bad"}
-        />
-        <Metric
-          label={lang === "da" ? "Returtemperatur (min. 24t)" : "Return Temp. (min. 24h)"}
-          value={lData.minTap24h} unit="°C"
-          sub={lData.minTap24h >= 50 ? t("compliant", lang) : t("nonCompliant", lang)}
-          status={lData.minTap24h >= 50 ? "good" : "bad"}
-        />
-        <Metric label={t("daysSinceDisinf", lang)} value={6} unit={lang === "da" ? "dage" : "days"}
-          sub={t("compliant", lang)} status="good" />
-        <Card className="group">
-          <CardContent className="p-4">
-            <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-2">{t("riskLevel", lang)}</p>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full" style={{ background: riskColor }} />
-              <span className="text-lg font-bold" style={{ color: riskColor }}>{riskLabel}</span>
-            </div>
-            <p className="text-xs mt-1.5 text-slate-400">{t("compliancePct", lang)}: {lData.compliancePct}%</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardContent className="p-5">
-          <GaugeBar />
-        </CardContent>
-      </Card>
-
-      <SectionCard title={lang === "da" ? "Temperatur fra fjernvarmemåler – Seneste 30 dage" : "Temperature from DH Meter – Last 30 Days"}>
-        <p className="text-[11px] text-slate-400 mb-3">
-          {lang === "da"
-            ? "Cirkulationstemperaturen (blå) bør altid være over 55°C. Returtemperaturen (gul) ved fjerneste punkt bør være over 50°C for at forhindre legionella."
-            : "Circulation temperature (blue) should always be above 55°C. Return temperature (yellow) at the furthest point should be above 50°C to prevent legionella."}
-        </p>
-        <ResponsiveContainer width="100%" height={280}>
-          <ComposedChart data={lData.days} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-            <XAxis dataKey="name" tick={{ fontSize: 10, fill: brand.muted }} axisLine={{stroke:brand.border}} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit="°C" domain={[35, 70]} axisLine={false} tickLine={false} />
-            <Tooltip content={<BrandTooltip />} />
-            <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
-            <ReferenceLine y={50} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{ value: "50°C min", fill: brand.red, fontSize: 10, position: "right" }} />
-            <ReferenceLine y={55} stroke={brand.amber} strokeDasharray="4 4" strokeWidth={1} label={{ value: "55°C rec", fill: brand.amber, fontSize: 10, position: "right" }} />
-            <Area type="monotone" dataKey="tank" fill={brand.blue} fillOpacity={0.04} stroke="none" />
-            <Line type="monotone" dataKey="tank" stroke={brand.blue} strokeWidth={1.5} dot={false}
-              name={lang === "da" ? "Cirkulation (°C)" : "Circulation (°C)"} />
-            <Line type="monotone" dataKey="tap" stroke={brand.amber} strokeWidth={1.5} dot={{ r: 2 }}
-              name={lang === "da" ? "Returtemp. (°C)" : "Return Temp. (°C)"} />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </SectionCard>
-
-      {/* Per-meter alert status table */}
-      <SectionCard title={lang === "da" ? "Legionellastatus per fjernvarmemåler" : "Legionella Status per DH Meter"} noPad>
-        <DataTable
-          headers={[
-            lang === "da" ? "Måler" : "Meter",
-            lang === "da" ? "Bygning" : "Building",
-            lang === "da" ? "Cirkulation" : "Circulation",
-            lang === "da" ? "Retur min." : "Return min.",
-            lang === "da" ? "Risiko" : "Risk",
-          ]}
-          rows={fjernvarmeMeters.map((m, idx) => {
-            const bldg = getBuilding(m.buildingId);
-            const mData = mkLegionella(m.id);
-            const mRisk = mData.currentTap >= 55 ? "low" : mData.currentTap >= 50 ? "medium" : "high";
-            const mRiskColor = { low: "bg-emerald-50 text-emerald-600", medium: "bg-amber-50 text-amber-600", high: "bg-red-50 text-red-600" }[mRisk];
-            const mRiskLabel = { low: t("riskLow", lang), medium: t("riskMedium", lang), high: t("riskHigh", lang) }[mRisk];
-            return (
-              <tr key={idx} className="hover:bg-slate-50/80 transition-colors cursor-pointer"
-                onClick={() => navigate && navigate(`/meters/${m.id}`)}>
-                <td className="px-4 py-2.5 text-sm font-medium" style={{ color: brand.blue }}>{m.id}</td>
-                <td className="px-4 py-2.5 text-sm text-slate-500">{bldg?.name || m.buildingId}</td>
-                <td className={`px-4 py-2.5 text-sm text-right tabular-nums font-medium ${mData.currentTank >= 55 ? "text-emerald-600" : "text-amber-500"}`}>{mData.currentTank}°C</td>
-                <td className={`px-4 py-2.5 text-sm text-right tabular-nums font-medium ${mData.minTap24h >= 50 ? "text-emerald-600" : "text-red-500"}`}>{mData.minTap24h}°C</td>
-                <td className="px-4 py-2.5 text-right">
-                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${mRiskColor}`}>
-                    {mRiskLabel}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        />
-      </SectionCard>
-
-      <SectionCard title={t("disinfLog",lang)} noPad>
-        <DataTable
-          headers={[t("disinfDate", lang), t("disinfDuration", lang), t("disinfPeakTemp", lang), t("disinfResult", lang)]}
-          rows={lData.disinfections.map((d, idx) => (
-            <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-              <td className="px-4 py-2.5 text-sm font-medium" style={{ color: brand.navy }}>{d.date}</td>
-              <td className="px-4 py-2.5 text-sm text-right tabular-nums">{d.duration} {t("minutes", lang)}</td>
-              <td className={`px-4 py-2.5 text-sm text-right tabular-nums font-medium ${d.peakTemp >= 60 ? "text-emerald-600" : "text-red-500"}`}>{d.peakTemp}°C</td>
-              <td className="px-4 py-2.5 text-right">
-                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${d.ok ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
-                  {d.ok ? t("disinfOk", lang) : t("disinfFail", lang)}
-                </span>
-              </td>
-            </tr>
-          ))}
-        />
       </SectionCard>
     </div>
   );
