@@ -32,7 +32,7 @@ export default function SupplierDetailPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-[1200px] mx-auto px-6 py-6">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <Breadcrumbs items={crumbs} />
 
         {/* Supplier header */}
@@ -46,7 +46,7 @@ export default function SupplierDetailPage() {
               <StatusBadge status={supplier.status} lang={lang} />
             </div>
             <p className="text-sm text-slate-400">{supplier.address}</p>
-            <div className="flex items-center gap-4 mt-1.5 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1.5 text-xs text-slate-500">
               <span>{supplier.utilityTypes.map(u => t(u, lang)).join(", ")}</span>
               <span className="w-px h-3 bg-slate-200" />
               <span>{meters.length} {t("meters", lang).toLowerCase()}</span>

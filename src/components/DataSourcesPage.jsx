@@ -96,7 +96,7 @@ export default function DataSourcesPage() {
   /* ════════════════════════════════════════════════════════ */
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
 
         {/* ── Header ── */}
         <div>
@@ -262,7 +262,28 @@ export default function DataSourcesPage() {
               <span className="text-[15px] font-semibold" style={{ color: brand.navy }}>{t("issuesAttention", lang)}</span>
               <span className="text-[11px] font-medium text-white bg-red-500 rounded-full px-2 py-0.5">{allIssues.length}</span>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+            {/* Mobile card view */}
+            <div className="block md:hidden space-y-3">
+              {allIssues.map((issue, idx) => {
+                const detailText = issue.detail
+                  ? (typeof issue.detail === "object" ? issue.detail[lang] || issue.detail.en : issue.detail)
+                  : "–";
+                return (
+                  <div key={`mobile-${issue.recordId}-${idx}`}
+                    className="rounded-lg border border-slate-200 bg-white p-4 cursor-pointer hover:border-slate-300 hover:shadow-sm transition-all"
+                    onClick={() => navigate(issue.recordLink)}>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-sm font-medium" style={{ color: brand.blue }}>{issue.recordId}</span>
+                      <StatusBadge status={issue.status} lang={lang} />
+                    </div>
+                    <div className="text-xs text-slate-500 mb-1">{t(issue.sourceNameKey, lang)} · {issue.entityLabel}</div>
+                    <div className="text-xs text-slate-400 truncate">{detailText}</div>
+                    <div className="text-[11px] text-slate-400 mt-2">{fmtDate(issue.lastUpdated, lang)}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="hidden md:block rounded-lg border border-slate-200 bg-white overflow-hidden">
               <table className="w-full text-[13px]">
                 <thead>
                   <tr className="bg-slate-50/80 text-left text-[11px] font-medium text-slate-500 uppercase tracking-wider">

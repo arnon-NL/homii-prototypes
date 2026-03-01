@@ -61,7 +61,7 @@ function InsightRow({ rec, lang, navigate }) {
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 rounded-lg border transition-all hover:shadow-sm cursor-pointer group"
+      className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-lg border transition-all hover:shadow-sm cursor-pointer group"
       style={{ borderColor: p.border, background: p.bg + "60" }}
       onClick={() => navigate(`/buildings/${rec.building.id}`)}
     >
@@ -83,7 +83,7 @@ function InsightRow({ rec, lang, navigate }) {
             {p.label[lang]}
           </span>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-slate-400">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] text-slate-400">
           <Building2 size={10} />
           <span className="font-medium group-hover:text-[#3EB1C8] transition-colors">{rec.building.name}</span>
           <span>·</span>
@@ -95,7 +95,7 @@ function InsightRow({ rec, lang, navigate }) {
 
       {/* Metric */}
       {rec.metric.target && (
-        <div className="hidden sm:flex items-center gap-1.5 text-[11px] shrink-0">
+        <div className="flex items-center gap-1.5 text-[11px] shrink-0">
           <span className="font-mono font-medium" style={{ color: p.dot }}>{rec.metric.value}</span>
           <ArrowRight size={10} className="text-slate-300" />
           <span className="font-mono font-medium text-emerald-600">{rec.metric.target}</span>
@@ -347,7 +347,7 @@ export default function HomePage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-[1200px] mx-auto px-6 py-6 space-y-6">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
 
         {/* Header */}
         <div>

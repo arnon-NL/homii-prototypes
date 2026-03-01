@@ -33,7 +33,7 @@ export default function BuildingDetailPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-[1200px] mx-auto px-6 py-6">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <Breadcrumbs items={crumbs} />
 
         {/* Building header */}
@@ -48,7 +48,7 @@ export default function BuildingDetailPage() {
               <StatusBadge status={building.status} lang={lang} />
             </div>
             <p className="text-sm text-slate-400">{building.address}</p>
-            <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-xs text-slate-500">
               <span>{building.units} {t("units", lang)}</span>
               <span className="w-px h-3 bg-slate-200" />
               <span>{building.area.toLocaleString()} m² {t("area", lang)}</span>
@@ -129,7 +129,40 @@ export default function BuildingDetailPage() {
               {/* Meters tab */}
               <TabsContent value="meters">
                 <div className="mt-4">
-                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                  {/* Mobile meter cards */}
+                  <div className="block md:hidden space-y-3">
+                    {meters.map(m => {
+                      const SvcIcon = typeIcons[m.type] || Flame;
+                      const color = typeColors[m.type];
+                      return (
+                        <button key={m.id} onClick={() => navigate(`/meters/${m.id}`)}
+                          className="w-full text-left rounded-lg border border-slate-200 bg-white p-4 hover:border-[#3EB1C8] hover:shadow-md transition-all">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-mono font-medium mb-1" style={{ color: brand.navy }}>{m.id}</div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-5 h-5 rounded flex items-center justify-center" style={{ background: color + "15" }}>
+                                  <SvcIcon size={12} style={{ color }} />
+                                </div>
+                                <span className="text-xs text-slate-600">{t(m.type, lang)}</span>
+                              </div>
+                            </div>
+                            <StatusBadge status={m.status} lang={lang} />
+                          </div>
+                          <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between">
+                            <div>
+                              <div className="text-[11px] text-slate-400">{t("lastReading", lang)}</div>
+                              <div className="text-sm font-medium tabular-nums" style={{ color: brand.navy }}>
+                                {m.lastReading.value} <span className="text-slate-400 font-normal">{m.lastReading.unit}</span>
+                              </div>
+                            </div>
+                            <div className="text-xs text-slate-400">{m.lastReading.date}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white hidden md:block">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-slate-200 bg-slate-50/80">

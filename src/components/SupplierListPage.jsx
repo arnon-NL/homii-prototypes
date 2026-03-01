@@ -32,7 +32,7 @@ export default function SupplierListPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-[1200px] mx-auto px-6 py-6">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <div className="flex items-baseline gap-2.5 mb-5">
           <h1 className="text-xl font-semibold" style={{ color: brand.navy }}>{t("suppliers", lang)}</h1>
           <span className="text-sm text-slate-400">{filtered.length}</span>
@@ -52,17 +52,75 @@ export default function SupplierListPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-3">
+          {filtered.map(s => (
+            <div
+              key={s.id}
+              onClick={() => navigate(`/suppliers/${s.id}`)}
+              className="rounded-lg border border-slate-200 bg-white p-4 cursor-pointer hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2.5 flex-1">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 flex-shrink-0">
+                    <Truck size={15} className="text-slate-500" />
+                  </div>
+                  <span className="text-sm font-medium" style={{ color: brand.navy }}>{s.name}</span>
+                </div>
+                <ArrowRight size={14} className="text-slate-300 flex-shrink-0 mt-0.5" />
+              </div>
+
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">{t("utilityTypes", lang)}</p>
+                  <p className="text-sm text-slate-500">{s.utilityLabels}</p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">{t("meterStatus", lang)}</p>
+                  <StatusBadge status={s.status} lang={lang} />
+                </div>
+
+                <div className="flex gap-4">
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">{t("meters", lang)}</p>
+                    <p className="text-sm font-medium tabular-nums" style={{ color: brand.navy }}>{s.meterCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold">{t("buildings", lang)}</p>
+                    <p className="text-sm font-medium tabular-nums" style={{ color: brand.navy }}>{s.buildingCount}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">{t("contact", lang)}</p>
+                  <p className="text-sm text-slate-400">{s.contact}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {filtered.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-sm text-slate-400">
+                {lang === "da" ? "Ingen leverandører fundet" : "No suppliers found"}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto rounded-lg border border-slate-200 bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80">
-                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-left">{t("supplier", lang)}</th>
-                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-left">{t("utilityTypes", lang)}</th>
-                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-center">{t("meterStatus", lang)}</th>
-                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-right">{t("meters", lang)}</th>
-                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-right">{t("buildings", lang)}</th>
-                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-left">{t("contact", lang)}</th>
-                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-right"></th>
+                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-5 py-2.5 text-left">{t("supplier", lang)}</th>
+                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-5 py-2.5 text-left">{t("utilityTypes", lang)}</th>
+                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-5 py-2.5 text-center">{t("meterStatus", lang)}</th>
+                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-5 py-2.5 text-right">{t("meters", lang)}</th>
+                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-5 py-2.5 text-right">{t("buildings", lang)}</th>
+                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-5 py-2.5 text-left">{t("contact", lang)}</th>
+                <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-3 sm:px-5 py-2.5 text-right"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -71,7 +129,7 @@ export default function SupplierListPage() {
                   className="hover:bg-slate-50/80 transition-colors cursor-pointer"
                   onClick={() => navigate(`/suppliers/${s.id}`)}
                 >
-                  <td className="px-5 py-3">
+                  <td className="px-3 sm:px-5 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100">
                         <Truck size={15} className="text-slate-500" />
@@ -79,21 +137,21 @@ export default function SupplierListPage() {
                       <span className="text-sm font-medium" style={{ color: brand.navy }}>{s.name}</span>
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-sm text-slate-500">{s.utilityLabels}</td>
-                  <td className="px-5 py-3 text-center">
+                  <td className="px-3 sm:px-5 py-3 text-sm text-slate-500">{s.utilityLabels}</td>
+                  <td className="px-3 sm:px-5 py-3 text-center">
                     <StatusBadge status={s.status} lang={lang} />
                   </td>
-                  <td className="px-5 py-3 text-sm text-right tabular-nums font-medium" style={{ color: brand.navy }}>{s.meterCount}</td>
-                  <td className="px-5 py-3 text-sm text-right tabular-nums font-medium" style={{ color: brand.navy }}>{s.buildingCount}</td>
-                  <td className="px-5 py-3 text-sm text-slate-400">{s.contact}</td>
-                  <td className="px-5 py-3 text-right">
+                  <td className="px-3 sm:px-5 py-3 text-sm text-right tabular-nums font-medium" style={{ color: brand.navy }}>{s.meterCount}</td>
+                  <td className="px-3 sm:px-5 py-3 text-sm text-right tabular-nums font-medium" style={{ color: brand.navy }}>{s.buildingCount}</td>
+                  <td className="px-3 sm:px-5 py-3 text-sm text-slate-400">{s.contact}</td>
+                  <td className="px-3 sm:px-5 py-3 text-right">
                     <ArrowRight size={14} className="text-slate-300" />
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-8 text-center text-sm text-slate-400">
+                  <td colSpan={7} className="px-3 sm:px-5 py-8 text-center text-sm text-slate-400">
                     {lang === "da" ? "Ingen leverandører fundet" : "No suppliers found"}
                   </td>
                 </tr>

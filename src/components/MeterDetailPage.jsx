@@ -975,7 +975,18 @@ export default function MeterDetailPage() {
                     <h3 className="text-sm font-semibold" style={{ color: brand.navy }}>{t("recentReadings", lang)}</h3>
                     <TimePeriodLabel text={isHourly ? (lang === "da" ? "Seneste 48 timer" : "Last 48 hours") : t("last12Months", lang)} />
                   </div>
-                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white max-h-[500px] overflow-y-auto">
+                  {/* Mobile readings list */}
+                  <div className="block md:hidden space-y-1 max-h-[500px] overflow-y-auto">
+                    {recentReadings.map((r, i) => (
+                      <div key={i} className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors">
+                        <span className="text-sm font-medium" style={{ color: brand.navy }}>{r.date}</span>
+                        <span className="text-sm font-medium tabular-nums" style={{ color: brand.navy }}>
+                          {r.value} <span className="text-slate-400 font-normal text-xs">{r.unit}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white max-h-[500px] overflow-y-auto hidden md:block">
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 z-10">
                         <tr className="border-b border-slate-200 bg-slate-50/80">

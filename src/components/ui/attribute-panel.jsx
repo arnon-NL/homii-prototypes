@@ -41,7 +41,7 @@ export function AttrRow({ label, value, onClick, color }) {
     <div className="flex items-baseline justify-between gap-2 min-h-[22px]">
       <span className="text-[11px] text-slate-400 shrink-0">{label}</span>
       <Val
-        className={`text-[12px] font-medium text-right truncate max-w-[160px] ${onClick ? "hover:text-[#3EB1C8] cursor-pointer transition-colors" : ""}`}
+        className={`text-[12px] font-medium text-right truncate max-w-[200px] xl:max-w-[160px] ${onClick ? "hover:text-[#3EB1C8] cursor-pointer transition-colors" : ""}`}
         style={{ color: color || brand.navy }}
         onClick={onClick}
         title={typeof value === "string" ? value : undefined}
