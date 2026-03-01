@@ -63,7 +63,7 @@ function SectionLabel({ label }) {
 
 export default function Sidebar({ lang, onLangChange }) {
   return (
-    <aside className="w-60 shrink-0 border-r border-slate-200 bg-slate-50/80 flex flex-col h-full select-none">
+    <aside className="w-60 shrink-0 border-r border-slate-200 bg-slate-50 flex flex-col h-full select-none">
       {/* Org header — KAB workspace */}
       <div className="px-3 pt-4 pb-2.5">
         <div className="flex items-center gap-2.5">
