@@ -316,3 +316,189 @@ export const billingCycles = [
   { id: "2024-2025", label: "2024/2025", start: "2024-07-01", end: "2025-06-30", active: false },
   { id: "2023-2024", label: "2023/2024", start: "2023-07-01", end: "2024-06-30", active: false },
 ];
+
+/* ═══════════════════════════════════════════════════════
+   Data Sources — source-agnostic integration registry
+   Each source declares what it syncs, how often, and its
+   current health. The DataSourcesPage renders these
+   generically regardless of entity type.
+   ═══════════════════════════════════════════════════════ */
+
+export const dataSources = [
+  {
+    id: "eloverblik",
+    nameKey: "srcEloverblik",
+    descKey: "srcEloverblikDesc",
+    category: "meter-data",
+    entityType: "meters",
+    syncPattern: "daily",          // D+1
+    syncPatternKey: "dPlus1",
+    status: "connected",
+    lastSync: "2026-02-24T06:12:00Z",
+    /* records are computed dynamically from meters[] via getDataSourceRecords() */
+  },
+  {
+    id: "kamstrup-ready",
+    nameKey: "srcKamstrupReady",
+    descKey: "srcKamstrupReadyDesc",
+    category: "meter-data",
+    entityType: "meters",
+    syncPattern: "realtime",
+    syncPatternKey: "realTime",
+    status: "connected",
+    lastSync: "2026-02-24T14:38:00Z",
+  },
+  {
+    id: "epc-energistyrelsen",
+    nameKey: "srcEpcEnergistyrelsen",
+    descKey: "srcEpcEnergistyrelsenDesc",
+    category: "certification",
+    entityType: "buildings",
+    syncPattern: "weekly",
+    syncPatternKey: "syncWeekly",
+    status: "connected",
+    lastSync: "2026-02-22T02:00:00Z",
+  },
+  {
+    id: "housing-corp",
+    nameKey: "srcHousingCorp",
+    descKey: "srcHousingCorpDesc",
+    category: "building-attributes",
+    entityType: "buildings",
+    syncPattern: "monthly",
+    syncPatternKey: "syncMonthly",
+    status: "connected",
+    lastSync: "2026-02-01T08:30:00Z",
+  },
+];
+
+/**
+ * Compute records, health, coverage, and breakdowns for each data source.
+ * This keeps the source definitions clean and derives everything from the
+ * core data arrays (meters[], buildings[]).
+ */
+export function getDataSourceRecords(sourceId) {
+  const src = dataSources.find(s => s.id === sourceId);
+  if (!src) return null;
+
+  /* ── Meter-based sources ── */
+  if (src.entityType === "meters") {
+    const list = meters.filter(m => m.dataSource === sourceId);
+    const healthy = list.filter(m => m.status === "active");
+    const issues = list.filter(m => m.status !== "active");
+    const avgQual = list.length
+      ? list.reduce((s, m) => s + ({ high: 3, medium: 2, low: 1 }[m.dataQuality] || 0), 0) / list.length
+      : 0;
+
+    // Type breakdown (fjernvarme/vand/el)
+    const breakdown = {};
+    list.forEach(m => { breakdown[m.type] = (breakdown[m.type] || 0) + 1; });
+
+    // Quality breakdown
+    const qualityBreakdown = {};
+    list.forEach(m => { qualityBreakdown[m.dataQuality] = (qualityBreakdown[m.dataQuality] || 0) + 1; });
+
+    // Coverage: how many buildings have at least one meter from this source
+    const coveredBuildings = new Set(list.map(m => m.buildingId));
+
+    // Issue details
+    const issueDetails = issues.map(m => ({
+      recordId: m.id,
+      entityLabel: getBuilding(m.buildingId)?.name || m.buildingId,
+      entityLink: `/buildings/${m.buildingId}`,
+      recordLink: `/meters/${m.id}`,
+      status: m.status,
+      detail: m.statusDetail,
+      lastUpdated: m.lastReading?.receivedDate || null,
+    }));
+
+    return {
+      total: list.length,
+      healthy: healthy.length,
+      issueCount: issues.length,
+      healthScore: avgQual,
+      coverage: { covered: coveredBuildings.size, total: buildings.length },
+      breakdown: Object.entries(breakdown).map(([key, count]) => ({ key, count })),
+      qualityBreakdown,
+      issues: issueDetails,
+    };
+  }
+
+  /* ── EPC certification source ── */
+  if (sourceId === "epc-energistyrelsen") {
+    const withEpc = buildings.filter(b => b.epc);
+    const now = new Date("2026-03-01");
+    const healthy = withEpc.filter(b => new Date(b.epcExpiresDate) > now);
+    const expired = withEpc.filter(b => new Date(b.epcExpiresDate) <= now);
+
+    // EPC rating breakdown
+    const breakdown = {};
+    withEpc.forEach(b => { breakdown[b.epc] = (breakdown[b.epc] || 0) + 1; });
+
+    // Quality: proportion still valid
+    const healthScore = withEpc.length ? (healthy.length / withEpc.length) * 3 : 0;
+
+    // Quality breakdown: valid vs expired
+    const qualityBreakdown = { high: healthy.length };
+    if (expired.length > 0) qualityBreakdown.low = expired.length;
+
+    const issueDetails = expired.map(b => ({
+      recordId: `EPC-${b.epc}-${b.id}`,
+      entityLabel: b.name,
+      entityLink: `/buildings/${b.id}`,
+      recordLink: `/buildings/${b.id}`,
+      status: "error",
+      detail: { da: `EPC ${b.epc} udløbet ${new Date(b.epcExpiresDate).toLocaleDateString("da-DK")}`, en: `EPC ${b.epc} expired ${new Date(b.epcExpiresDate).toLocaleDateString("en-GB")}` },
+      lastUpdated: b.epcCertifiedDate,
+    }));
+
+    return {
+      total: withEpc.length,
+      healthy: healthy.length,
+      issueCount: expired.length,
+      healthScore,
+      coverage: { covered: withEpc.length, total: buildings.length },
+      breakdown: Object.entries(breakdown).map(([key, count]) => ({ key, count })),
+      qualityBreakdown,
+      issues: issueDetails,
+    };
+  }
+
+  /* ── Housing corporation attributes source ── */
+  if (sourceId === "housing-corp") {
+    // All buildings have attribute data; check completeness
+    const complete = buildings.filter(b => b.units && b.area && b.owner && b.administrator);
+    const incomplete = buildings.filter(b => !b.units || !b.area || !b.owner || !b.administrator);
+
+    // Breakdown: by building type
+    const breakdown = {};
+    buildings.forEach(b => { breakdown[b.buildingType || "Unknown"] = (breakdown[b.buildingType || "Unknown"] || 0) + 1; });
+
+    const healthScore = buildings.length ? (complete.length / buildings.length) * 3 : 0;
+    const qualityBreakdown = { high: complete.length };
+    if (incomplete.length > 0) qualityBreakdown.low = incomplete.length;
+
+    const issueDetails = incomplete.map(b => ({
+      recordId: `ATTR-${b.id}`,
+      entityLabel: b.name,
+      entityLink: `/buildings/${b.id}`,
+      recordLink: `/buildings/${b.id}`,
+      status: "warning",
+      detail: { da: "Ufuldstændige bygningsattributter", en: "Incomplete building attributes" },
+      lastUpdated: b.bbrLastUpdated || null,
+    }));
+
+    return {
+      total: buildings.length,
+      healthy: complete.length,
+      issueCount: incomplete.length,
+      healthScore,
+      coverage: { covered: buildings.length, total: buildings.length },
+      breakdown: Object.entries(breakdown).map(([key, count]) => ({ key, count })),
+      qualityBreakdown,
+      issues: issueDetails,
+    };
+  }
+
+  return null;
+}
