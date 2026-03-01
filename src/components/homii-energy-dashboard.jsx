@@ -1181,26 +1181,25 @@ export function GraddageReport({ navigate }) {
       </SectionCard>
 
       {/* Meter comparison table */}
-      <SectionCard title={t("meterComparison", lang)}>
-        <DataTable
-          className="text-xs"
-          head={
-            <tr className="text-[11px]" style={{ color: brand.muted }}>
-              <th className="px-4 py-2.5 text-left font-medium">{t("meter", lang)}</th>
-              <th className="px-4 py-2.5 text-left font-medium">{t("building", lang)}</th>
-              {vis.map(y => (
-                <Fragment key={y}>
-                  <th className="px-4 py-2.5 text-right font-medium">{t("rawCons", lang)} {y}</th>
-                  <th className="px-4 py-2.5 text-right font-medium">GAF {y}</th>
-                  <th className="px-4 py-2.5 text-right font-medium">GUF {y}</th>
-                </Fragment>
-              ))}
-            </tr>
-          }
-          body={
-            <>
-              {tableData.map((m, idx) => (
-                <tr key={m.id} className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
+      <SectionCard title={t("meterComparison", lang)} noPad>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px]" style={{ color: brand.muted }}>
+                <th className="px-4 py-2.5 text-left font-medium">{t("meter", lang)}</th>
+                <th className="px-4 py-2.5 text-left font-medium">{t("building", lang)}</th>
+                {vis.map(y => (
+                  <Fragment key={y}>
+                    <th className="px-4 py-2.5 text-right font-medium">{t("rawCons", lang)} {y}</th>
+                    <th className="px-4 py-2.5 text-right font-medium">GAF {y}</th>
+                    <th className="px-4 py-2.5 text-right font-medium">GUF {y}</th>
+                  </Fragment>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {tableData.map((m) => (
+                <tr key={m.id} className="hover:bg-slate-50 cursor-pointer transition-colors"
                   onClick={() => navigate(`/meter/${m.id}`)}>
                   <td className="px-4 py-2 text-sm font-medium" style={{ color: brand.navy }}>{m.id}</td>
                   <td className="px-4 py-2 text-sm text-slate-500">{m.buildingName}</td>
@@ -1213,9 +1212,9 @@ export function GraddageReport({ navigate }) {
                   ))}
                 </tr>
               ))}
-            </>
-          }
-        />
+            </tbody>
+          </table>
+        </div>
       </SectionCard>
     </div>
   );
