@@ -1,157 +1,37 @@
 import React, { useMemo, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { brand, HOFOR, EPC_COLORS } from "@/lib/brand";
+import { brand } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
-import { getMetersForBuilding } from "@/lib/mockData";
-import { TrendingDown, AlertTriangle, ArrowRight, Zap, Flame, Shield, Award, Target, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  generateBuildingInsights,
+  INSIGHT_CATEGORIES,
+  PRIORITY_CONFIG,
+} from "@/lib/insightEngine";
+import {
+  TrendingDown, ArrowRight, Zap, Thermometer, Award, Activity,
+  Sparkles, ChevronDown, ChevronUp,
+} from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════
-   Recommendation Engine — generates prioritized insights
-   based on building data, HOFOR 2026 tariffs, EPC deadlines
+   Category Icon Mapping
    ═══════════════════════════════════════════════════════ */
-
-const priorityConfig = {
-  critical: { bg: "#FEF2F2", border: "#FECACA", text: "#991B1B", dot: "#EF4444", label: { da: "Kritisk", en: "Critical" } },
-  high:     { bg: "#FFF7ED", border: "#FED7AA", text: "#9A3412", dot: "#F97316", label: { da: "Høj", en: "High" } },
-  medium:   { bg: "#FFFBEB", border: "#FDE68A", text: "#92400E", dot: "#F59E0B", label: { da: "Middel", en: "Medium" } },
-  low:      { bg: "#F0FDF4", border: "#BBF7D0", text: "#166534", dot: "#22C55E", label: { da: "Lav", en: "Low" } },
+const iconMap = {
+  Thermometer,
+  Award,
+  TrendingDown,
+  Activity,
 };
 
-const categoryIcons = {
-  tariff: Flame,
-  epc: Award,
-  legionella: Shield,
-  efficiency: TrendingDown,
-  compliance: Target,
-};
-
-function generateRecommendations(building, lang) {
-  const recs = [];
-  const buildingMeters = getMetersForBuilding(building.id);
-  const hasFjernvarme = buildingMeters.some(m => m.type === "fjernvarme");
-  const hasEl = buildingMeters.some(m => m.type === "el");
-
-  // 1. HOFOR Motivationstarif — always relevant for fjernvarme buildings
-  if (hasFjernvarme) {
-    const simCooling = building.id === "kab-orestad" ? 27.8 : building.id === "fsb-tingbjerg" ? 24.5 : building.id === "ab-soendergaard" ? 22.1 : 31.2;
-    const improvementDeg = Math.max(0, HOFOR.standard.krav - simCooling);
-    const annualMWh = building.area * 0.12;
-    const correctionSaving = improvementDeg * HOFOR.korrektionPct * HOFOR.energiprisPerMWh * annualMWh;
-
-    if (simCooling < HOFOR.standard.krav) {
-      recs.push({
-        id: "tariff-surcharge",
-        category: "tariff",
-        priority: "critical",
-        titleKey: "recTariffSurchargeTitle",
-        descKey: "recTariffSurchargeDesc",
-        savingDKK: Math.round(correctionSaving),
-        metric: { value: `${simCooling.toFixed(1)}°C`, target: `${HOFOR.standard.krav}°C` },
-        effortKey: "effortMedium",
-        timelineKey: "timeline3to6",
-      });
-    } else if (simCooling < HOFOR.standard.bonusAbove) {
-      const bonusPotential = (HOFOR.standard.bonusAbove - simCooling) * HOFOR.korrektionPct * HOFOR.energiprisPerMWh * annualMWh;
-      recs.push({
-        id: "tariff-bonus",
-        category: "tariff",
-        priority: "medium",
-        titleKey: "recTariffBonusTitle",
-        descKey: "recTariffBonusDesc",
-        savingDKK: Math.round(bonusPotential),
-        metric: { value: `${simCooling.toFixed(1)}°C`, target: `≥${HOFOR.standard.bonusAbove}°C` },
-        effortKey: "effortLow",
-        timelineKey: "timeline1to3",
-      });
-    }
-  }
-
-  // 2. EPC Upgrade Path
-  const epcOrder = ["A", "B", "C", "D", "E", "F", "G"];
-  const epcIdx = epcOrder.indexOf(building.epc);
-  if (epcIdx > 1) {
-    const stepsToB = epcIdx - 1;
-    const monthsLeft = Math.max(0, Math.round((new Date("2030-01-01") - new Date()) / (1000 * 60 * 60 * 24 * 30)));
-    const estimatedSaving = stepsToB * building.units * 1200;
-    recs.push({
-      id: "epc-upgrade",
-      category: "epc",
-      priority: epcIdx >= 4 ? "critical" : epcIdx >= 3 ? "high" : "medium",
-      titleKey: "recEpcTitle",
-      descKey: "recEpcDesc",
-      savingDKK: estimatedSaving,
-      metric: { value: building.epc, target: "B" },
-      effortKey: epcIdx >= 4 ? "effortHigh" : "effortMedium",
-      timelineKey: "timeline12to24",
-      extraData: { monthsLeft, stepsToB },
-    });
-  }
-
-  // 3. Legionella Optimization
-  if (hasFjernvarme) {
-    const simTankTemp = building.id === "aab-amager" ? 62 : 58;
-    if (simTankTemp > 57) {
-      const overHeatDeg = simTankTemp - 55;
-      const savingKwh = overHeatDeg * building.units * 365 * 0.15;
-      const savingDKK = Math.round(savingKwh * 0.65);
-      recs.push({
-        id: "legionella-opt",
-        category: "legionella",
-        priority: "low",
-        titleKey: "recLegionellaTitle",
-        descKey: "recLegionellaDesc",
-        savingDKK,
-        metric: { value: `${simTankTemp}°C`, target: "55°C" },
-        effortKey: "effortLow",
-        timelineKey: "timeline1to3",
-      });
-    }
-  }
-
-  // 4. Smart Heating Curve
-  if (hasFjernvarme && building.units > 100) {
-    recs.push({
-      id: "heating-curve",
-      category: "efficiency",
-      priority: "high",
-      titleKey: "recHeatingCurveTitle",
-      descKey: "recHeatingCurveDesc",
-      savingDKK: Math.round(building.area * 8.5),
-      metric: { value: "8-12%", target: null },
-      effortKey: "effortLow",
-      timelineKey: "timeline1to3",
-    });
-  }
-
-  // 5. Sub-metering ROI
-  if (!hasEl && building.units > 50) {
-    recs.push({
-      id: "submetering",
-      category: "efficiency",
-      priority: "medium",
-      titleKey: "recSubmeteringTitle",
-      descKey: "recSubmeteringDesc",
-      savingDKK: Math.round(building.units * 800),
-      metric: { value: `${building.units}`, target: null },
-      effortKey: "effortMedium",
-      timelineKey: "timeline6to12",
-    });
-  }
-
-  return recs.sort((a, b) => {
-    const order = { critical: 0, high: 1, medium: 2, low: 3 };
-    return order[a.priority] - order[b.priority];
-  });
+function getCategoryIcon(category) {
+  const cfg = INSIGHT_CATEGORIES[category];
+  return cfg ? (iconMap[cfg.iconName] || Zap) : Zap;
 }
 
 /* ═══════════════════════════════════════════════════════
-   UI Components
+   Insight Card — single recommendation display
    ═══════════════════════════════════════════════════════ */
-
 function InsightCard({ rec, lang }) {
-  const p = priorityConfig[rec.priority];
-  const CatIcon = categoryIcons[rec.category] || Zap;
+  const p = PRIORITY_CONFIG[rec.priority];
+  const CatIcon = getCategoryIcon(rec.category);
 
   return (
     <div className="rounded-lg border p-4 transition-all hover:shadow-md"
@@ -177,13 +57,15 @@ function InsightCard({ rec, lang }) {
             {t(rec.descKey, lang)}
           </p>
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1.5">
-              <TrendingDown size={12} className="text-emerald-600" />
-              <span className="text-sm font-bold text-emerald-700">
-                {rec.savingDKK.toLocaleString("da-DK")} DKK
-              </span>
-              <span className="text-[10px] text-slate-400">/{lang === "da" ? "år" : "yr"}</span>
-            </div>
+            {rec.savingDKK > 0 && (
+              <div className="flex items-center gap-1.5">
+                <TrendingDown size={12} className="text-emerald-600" />
+                <span className="text-sm font-bold text-emerald-700">
+                  {rec.savingDKK.toLocaleString("da-DK")} DKK
+                </span>
+                <span className="text-[10px] text-slate-400">/{lang === "da" ? "år" : "yr"}</span>
+              </div>
+            )}
             {rec.metric.target && (
               <div className="flex items-center gap-1 text-[10px] text-slate-500">
                 <span className="font-mono font-medium" style={{ color: p.dot }}>{rec.metric.value}</span>
@@ -191,18 +73,29 @@ function InsightCard({ rec, lang }) {
                 <span className="font-mono font-medium text-emerald-600">{rec.metric.target}</span>
               </div>
             )}
+            {!rec.metric.target && rec.metric.value && (
+              <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                <span className="font-mono font-medium" style={{ color: p.dot }}>{rec.metric.value}</span>
+              </div>
+            )}
             <span className="text-[10px] text-slate-400 ml-auto">{t(rec.timelineKey, lang)}</span>
           </div>
+          {rec.dataSource && (
+            <p className="text-[9px] text-slate-300 mt-2 uppercase tracking-wider">{rec.dataSource}</p>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+/* ═══════════════════════════════════════════════════════
+   SmartInsights — collapsible building-level widget
+   ═══════════════════════════════════════════════════════ */
 export default function SmartInsights({ building }) {
   const lang = useLang();
   const [expanded, setExpanded] = useState(false);
-  const recs = useMemo(() => generateRecommendations(building, lang), [building, lang]);
+  const recs = useMemo(() => generateBuildingInsights(building), [building]);
   const totalSaving = recs.reduce((s, r) => s + r.savingDKK, 0);
 
   if (recs.length === 0) return null;
@@ -228,12 +121,16 @@ export default function SmartInsights({ building }) {
           </div>
         </div>
         <div className="text-right mr-2">
-          <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-            {t("totalPotential", lang)}
-          </p>
-          <p className="text-sm font-bold text-emerald-700">
-            {totalSaving.toLocaleString("da-DK")} DKK/{lang === "da" ? "år" : "yr"}
-          </p>
+          {totalSaving > 0 && (
+            <>
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                {t("totalPotential", lang)}
+              </p>
+              <p className="text-sm font-bold text-emerald-700">
+                {totalSaving.toLocaleString("da-DK")} DKK/{lang === "da" ? "år" : "yr"}
+              </p>
+            </>
+          )}
         </div>
         {expanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
       </button>

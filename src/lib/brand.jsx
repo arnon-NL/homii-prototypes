@@ -50,12 +50,6 @@ export const Icon = {
       <path d="M4 14V6M8 14V2M12 14V8" />
     </svg>
   ),
-  legionella: (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M8 2a5 5 0 0 1 5 5c0 3-2 5-5 7-3-2-5-4-5-7a5 5 0 0 1 5-5z" />
-      <circle cx="8" cy="7" r="1.5" />
-    </svg>
-  ),
   consumption: (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
       <path d="M2 14h12M3 14V8h2v6M7 14V4h2v10M11 14V6h2v8" />

@@ -1,165 +1,34 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { brand, HOFOR, EPC_COLORS } from "@/lib/brand";
+import { brand, EPC_COLORS } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
 import { buildings, meters, getMetersForBuilding } from "@/lib/mockData";
 import {
+  generatePortfolioInsights,
+  INSIGHT_CATEGORIES,
+  PRIORITY_CONFIG,
+} from "@/lib/insightEngine";
+import {
   Building2, Gauge, TrendingDown, AlertTriangle, ArrowRight,
-  Zap, Flame, Shield, Award, Target, Sparkles, ChevronDown,
+  Zap, Thermometer, Award, Activity, Sparkles, ChevronDown,
   ChevronUp, ExternalLink, BookOpen,
 } from "lucide-react";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 /* ═══════════════════════════════════════════════════════
-   Reuse the recommendation engine from SmartInsights
-   but run it across ALL buildings for portfolio view
+   Icon mapping (from engine category config)
    ═══════════════════════════════════════════════════════ */
+const iconMap = { Thermometer, Award, TrendingDown, Activity };
 
-const priorityConfig = {
-  critical: { bg: "#FEF2F2", border: "#FECACA", text: "#991B1B", dot: "#EF4444", label: { da: "Kritisk", en: "Critical" } },
-  high:     { bg: "#FFF7ED", border: "#FED7AA", text: "#9A3412", dot: "#F97316", label: { da: "Høj", en: "High" } },
-  medium:   { bg: "#FFFBEB", border: "#FDE68A", text: "#92400E", dot: "#F59E0B", label: { da: "Middel", en: "Medium" } },
-  low:      { bg: "#F0FDF4", border: "#BBF7D0", text: "#166534", dot: "#22C55E", label: { da: "Lav", en: "Low" } },
-};
+function getCategoryIcon(category) {
+  const cfg = INSIGHT_CATEGORIES[category];
+  return cfg ? (iconMap[cfg.iconName] || Zap) : Zap;
+}
 
-const categoryIcons = {
-  tariff: Flame,
-  epc: Award,
-  legionella: Shield,
-  efficiency: TrendingDown,
-  compliance: Target,
-};
-
-const categoryLabels = {
-  tariff:     { da: "Tarif",         en: "Tariff" },
-  epc:        { da: "Energimærke",   en: "Energy Label" },
-  legionella: { da: "Legionella",    en: "Legionella" },
-  efficiency: { da: "Effektivitet",  en: "Efficiency" },
-  compliance: { da: "Compliance",    en: "Compliance" },
-};
-
-function generateAllRecommendations(lang) {
-  const all = [];
-  for (const building of buildings) {
-    const recs = [];
-    const buildingMeters = getMetersForBuilding(building.id);
-    const hasFjernvarme = buildingMeters.some(m => m.type === "fjernvarme");
-    const hasEl = buildingMeters.some(m => m.type === "el");
-
-    if (hasFjernvarme) {
-      const simCooling = building.id === "kab-orestad" ? 27.8 : building.id === "fsb-tingbjerg" ? 24.5 : building.id === "ab-soendergaard" ? 22.1 : 31.2;
-      const improvementDeg = Math.max(0, HOFOR.standard.krav - simCooling);
-      const annualMWh = building.area * 0.12;
-      const correctionSaving = improvementDeg * HOFOR.korrektionPct * HOFOR.energiprisPerMWh * annualMWh;
-
-      if (simCooling < HOFOR.standard.krav) {
-        recs.push({
-          id: `tariff-surcharge-${building.id}`,
-          category: "tariff",
-          priority: "critical",
-          titleKey: "recTariffSurchargeTitle",
-          descKey: "recTariffSurchargeDesc",
-          savingDKK: Math.round(correctionSaving),
-          metric: { value: `${simCooling.toFixed(1)}°C`, target: `${HOFOR.standard.krav}°C` },
-          effortKey: "effortMedium",
-          timelineKey: "timeline3to6",
-          building,
-        });
-      } else if (simCooling < HOFOR.standard.bonusAbove) {
-        const bonusPotential = (HOFOR.standard.bonusAbove - simCooling) * HOFOR.korrektionPct * HOFOR.energiprisPerMWh * annualMWh;
-        recs.push({
-          id: `tariff-bonus-${building.id}`,
-          category: "tariff",
-          priority: "medium",
-          titleKey: "recTariffBonusTitle",
-          descKey: "recTariffBonusDesc",
-          savingDKK: Math.round(bonusPotential),
-          metric: { value: `${simCooling.toFixed(1)}°C`, target: `≥${HOFOR.standard.bonusAbove}°C` },
-          effortKey: "effortLow",
-          timelineKey: "timeline1to3",
-          building,
-        });
-      }
-    }
-
-    const epcOrder = ["A", "B", "C", "D", "E", "F", "G"];
-    const epcIdx = epcOrder.indexOf(building.epc);
-    if (epcIdx > 1) {
-      const stepsToB = epcIdx - 1;
-      const estimatedSaving = stepsToB * building.units * 1200;
-      recs.push({
-        id: `epc-upgrade-${building.id}`,
-        category: "epc",
-        priority: epcIdx >= 4 ? "critical" : epcIdx >= 3 ? "high" : "medium",
-        titleKey: "recEpcTitle",
-        descKey: "recEpcDesc",
-        savingDKK: estimatedSaving,
-        metric: { value: building.epc, target: "B" },
-        effortKey: epcIdx >= 4 ? "effortHigh" : "effortMedium",
-        timelineKey: "timeline12to24",
-        building,
-      });
-    }
-
-    /* Legionella — compliance & safety (separate from energy optimization) */
-    if (hasFjernvarme) {
-      const simReturnTemp = building.id === "aab-amager" ? 47 : building.id === "kab-orestad" ? 44 : 42;
-      if (simReturnTemp > 43) {
-        const overDeg = simReturnTemp - 43;
-        const savingKwh = overDeg * building.units * 365 * 0.15;
-        recs.push({
-          id: `legionella-opt-${building.id}`,
-          category: "compliance",
-          priority: "low",
-          titleKey: "recLegionellaTitle",
-          descKey: "recLegionellaDesc",
-          savingDKK: Math.round(savingKwh * 0.65),
-          metric: { value: `${simReturnTemp}°C`, target: "≤43°C" },
-          effortKey: "effortLow",
-          timelineKey: "timeline1to3",
-          building,
-        });
-      }
-    }
-
-    if (hasFjernvarme && building.units > 100) {
-      recs.push({
-        id: `heating-curve-${building.id}`,
-        category: "efficiency",
-        priority: "high",
-        titleKey: "recHeatingCurveTitle",
-        descKey: "recHeatingCurveDesc",
-        savingDKK: Math.round(building.area * 8.5),
-        metric: { value: "8-12%", target: null },
-        effortKey: "effortLow",
-        timelineKey: "timeline1to3",
-        building,
-      });
-    }
-
-    if (!hasEl && building.units > 50) {
-      recs.push({
-        id: `submetering-${building.id}`,
-        category: "efficiency",
-        priority: "medium",
-        titleKey: "recSubmeteringTitle",
-        descKey: "recSubmeteringDesc",
-        savingDKK: Math.round(building.units * 800),
-        metric: { value: `${building.units}`, target: null },
-        effortKey: "effortMedium",
-        timelineKey: "timeline6to12",
-        building,
-      });
-    }
-
-    all.push(...recs);
-  }
-
-  return all.sort((a, b) => {
-    const order = { critical: 0, high: 1, medium: 2, low: 3 };
-    return order[a.priority] - order[b.priority];
-  });
+function getCategoryLabel(category, lang) {
+  const cfg = INSIGHT_CATEGORIES[category];
+  return cfg?.labelKey?.[lang] || category;
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -187,8 +56,8 @@ function KpiCard({ icon: IconComp, label, value, sub, color }) {
    Insight row — compact for portfolio view
    ═══════════════════════════════════════════════════════ */
 function InsightRow({ rec, lang, navigate }) {
-  const p = priorityConfig[rec.priority];
-  const CatIcon = categoryIcons[rec.category] || Zap;
+  const p = PRIORITY_CONFIG[rec.priority];
+  const CatIcon = getCategoryIcon(rec.category);
 
   return (
     <div
@@ -234,12 +103,14 @@ function InsightRow({ rec, lang, navigate }) {
       )}
 
       {/* Saving */}
-      <div className="text-right shrink-0">
-        <p className="text-sm font-bold text-emerald-700 tabular-nums">
-          {rec.savingDKK.toLocaleString("da-DK")} DKK
-        </p>
-        <p className="text-[10px] text-slate-400">/{lang === "da" ? "år" : "yr"}</p>
-      </div>
+      {rec.savingDKK > 0 && (
+        <div className="text-right shrink-0">
+          <p className="text-sm font-bold text-emerald-700 tabular-nums">
+            {rec.savingDKK.toLocaleString("da-DK")} DKK
+          </p>
+          <p className="text-[10px] text-slate-400">/{lang === "da" ? "år" : "yr"}</p>
+        </div>
+      )}
 
       <ExternalLink size={12} className="text-slate-300 group-hover:text-slate-500 shrink-0" />
     </div>
@@ -247,11 +118,11 @@ function InsightRow({ rec, lang, navigate }) {
 }
 
 /* ═══════════════════════════════════════════════════════
-   Category summary pill
+   Category filter pill
    ═══════════════════════════════════════════════════════ */
-function CategoryFilter({ category, count, savings, active, onClick, lang }) {
-  const CatIcon = categoryIcons[category] || Zap;
-  const label = categoryLabels[category]?.[lang] || category;
+function CategoryFilter({ category, count, active, onClick, lang }) {
+  const CatIcon = getCategoryIcon(category);
+  const label = getCategoryLabel(category, lang);
   return (
     <button
       onClick={onClick}
@@ -274,11 +145,9 @@ function CategoryFilter({ category, count, savings, active, onClick, lang }) {
 function MethodologyPanel({ lang }) {
   const [open, setOpen] = useState(false);
   const methods = [
-    { titleKey: "methodTariffTitle", descKey: "methodTariffDesc", icon: Flame, color: "#EF4444", sourceTag: "Kamstrup READy + HOFOR" },
-    { titleKey: "methodEpcTitle", descKey: "methodEpcDesc", icon: Award, color: "#F59E0B", sourceTag: "Sparenergi / EMO" },
-    { titleKey: "methodLegionellaTitle", descKey: "methodLegionellaDesc", icon: Shield, color: "#3B82F6", sourceTag: "Kamstrup READy" },
-    { titleKey: "methodHeatingTitle", descKey: "methodHeatingDesc", icon: TrendingDown, color: "#22C55E", sourceTag: "DMI + Kamstrup READy" },
-    { titleKey: "methodSubmeteringTitle", descKey: "methodSubmeteringDesc", icon: Zap, color: "#8B5CF6", sourceTag: "Eloverblik" },
+    { titleKey: "methodTariffTitle", descKey: "methodTariffDesc", icon: Thermometer, color: "#EF4444", sourceTag: "Kamstrup READy + HOFOR" },
+    { titleKey: "methodEpcTitle", descKey: "methodEpcDesc", icon: Award, color: "#F59E0B", sourceTag: "EMO / Energistyrelsen" },
+    { titleKey: "methodDataQualityTitle", descKey: "methodDataQualityDesc", icon: Activity, color: "#3B82F6", sourceTag: "Data integration health" },
   ];
 
   return (
@@ -329,7 +198,7 @@ export default function HomePage() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [showAll, setShowAll] = useState(false);
 
-  const allRecs = useMemo(() => generateAllRecommendations(lang), [lang]);
+  const allRecs = useMemo(() => generatePortfolioInsights(), []);
   const totalSaving = allRecs.reduce((s, r) => s + r.savingDKK, 0);
 
   // Group by category
@@ -427,16 +296,18 @@ export default function HomePage() {
               </h2>
               <p className="text-[12px] text-slate-400">
                 {lang === "da"
-                  ? "Prioriterede anbefalinger på tværs af hele porteføljen"
-                  : "Prioritized recommendations across the entire portfolio"}
+                  ? "Prioriterede anbefalinger baseret på løbende dataanalyse"
+                  : "Prioritized recommendations based on ongoing data analysis"}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-lg font-bold text-emerald-700 tabular-nums">
-                {totalSaving.toLocaleString("da-DK")} DKK
-              </p>
-              <p className="text-[10px] text-slate-400 uppercase tracking-wider">{t("totalPotential", lang)}</p>
-            </div>
+            {totalSaving > 0 && (
+              <div className="text-right">
+                <p className="text-lg font-bold text-emerald-700 tabular-nums">
+                  {totalSaving.toLocaleString("da-DK")} DKK
+                </p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider">{t("totalPotential", lang)}</p>
+              </div>
+            )}
           </div>
 
           {/* Methodology — expandable documentation */}
@@ -455,12 +326,11 @@ export default function HomePage() {
               {lang === "da" ? "Alle" : "All"}
               <span className="text-[10px] bg-slate-100 rounded-full px-1.5 py-0.5 tabular-nums">{allRecs.length}</span>
             </button>
-            {Object.entries(categories).map(([cat, { count, savings }]) => (
+            {Object.entries(categories).map(([cat, { count }]) => (
               <CategoryFilter
                 key={cat}
                 category={cat}
                 count={count}
-                savings={savings}
                 active={activeCategory === cat}
                 onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
                 lang={lang}
@@ -496,7 +366,6 @@ export default function HomePage() {
             {buildings.map(b => {
               const bMeters = getMetersForBuilding(b.id);
               const bRecs = allRecs.filter(r => r.building.id === b.id);
-              const bSaving = bRecs.reduce((s, r) => s + r.savingDKK, 0);
               const critCount = bRecs.filter(r => r.priority === "critical").length;
               const issueMeters = bMeters.filter(m => m.status === "error" || m.status === "offline").length;
               const allReporting = issueMeters === 0;
