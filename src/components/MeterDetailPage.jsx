@@ -3,11 +3,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Flame, Droplets, Zap, Activity, ChevronRight, AlertCircle, Radio, Clock } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend, ReferenceLine } from "recharts";
+import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend, ReferenceLine } from "recharts";
 import { brand, EPC_COLORS, HOFOR } from "@/lib/brand";
 import { t, useLang, MS, ML } from "@/lib/i18n";
-import { getMeter, getBuilding, getSupplier, meters, billingCycles, getGraddageForMeter, GK, GN, GNT } from "@/lib/mockData";
+import { getMeter, getBuilding, getSupplier, meters, billingCycles, getGraddageForMeter, getHistoricalMonthly, GK, GN, GNT } from "@/lib/mockData";
 import { yearColor } from "@/lib/brand";
+import { YearPill } from "@/components/ui/year-pill";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AttributePanel, AttrSection, AttrRow, AttrLink } from "@/components/ui/attribute-panel";
 import { InfoTooltip, TimePeriodLabel } from "@/components/ui/info-tooltip";
@@ -179,13 +180,7 @@ const TempTooltip = ({ active, payload, label }) => {
 /* ═══════════════════════════════════════════════════════
    GAF Benchmark — degree-day-adjusted consumption (DH only)
    ═══════════════════════════════════════════════════════ */
-const YearPill = ({ year, active, onClick }) => (
-  <button onClick={onClick}
-    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all duration-200 ${active ? "text-white shadow-sm" : "text-slate-500 bg-transparent hover:bg-slate-100"}`}
-    style={active ? { background: yearColor[year] } : {}}>
-    {year}
-  </button>
-);
+/* YearPill now imported from @/components/ui/year-pill */
 
 function GafBenchmark({ meter, lang }) {
   const ms = MS[lang];
@@ -335,6 +330,10 @@ export default function MeterDetailPage() {
   const [showGaf, setShowGaf] = useState(false);
   const [showDegreeDays, setShowDegreeDays] = useState(false);
 
+  /* ── Year comparison state ── */
+  const [compYears, setCompYears] = useState([2024, 2025, 2026]);
+  const [compMonth, setCompMonth] = useState(null); // null = all months, 0-11 = single month
+
   if (!meter) return <div className="p-6 text-slate-400">Meter not found</div>;
 
   const building = getBuilding(meter.buildingId);
@@ -348,6 +347,34 @@ export default function MeterDetailPage() {
   const recentReadings = useMemo(() => generateRecentReadings(meter), [meter]);
   const tempData = useMemo(() => (meter.type === "fjernvarme" && meter.hasTemperatureData) ? generateTempData(meter, tempRange) : null, [meter, tempRange]);
   const showTempUnavailable = meter.type === "fjernvarme" && !meter.hasTemperatureData;
+
+  /* ── Historical consumption data for year comparison ── */
+  const historical = useMemo(() => getHistoricalMonthly(meter.id), [meter.id]);
+  const togCompYear = (y) => setCompYears(p => p.includes(y) ? p.filter(x => x !== y) : [...p, y].sort());
+
+  // Comparison chart data: pivoted for Recharts
+  const compChartData = useMemo(() => {
+    if (!historical.data.length) return [];
+    const ms = MS[lang];
+
+    if (compMonth === null) {
+      // All months mode: x-axis = months, grouped bars per year
+      return ms.map((m, mi) => {
+        const entry = { name: m, _monthIdx: mi };
+        compYears.forEach(y => {
+          const row = historical.data.find(d => d.year === y && d.monthIdx === mi);
+          if (row) entry[`y${y}`] = row.value;
+        });
+        return entry;
+      });
+    } else {
+      // Single month mode: x-axis = years, one bar per year
+      return compYears.map(y => {
+        const row = historical.data.find(d => d.year === y && d.monthIdx === compMonth);
+        return { name: `${y}`, value: row?.value || 0 };
+      });
+    }
+  }, [historical, compYears, compMonth, lang]);
 
   /* ── GAF data for DH meters — used for overlay on consumption trend ── */
   const isDH = meter.type === "fjernvarme";
@@ -675,6 +702,91 @@ export default function MeterDetailPage() {
                       )}
                     </CardContent>
                   </Card>
+
+                  {/* ── Year-over-year consumption comparison ── */}
+                  {historical.data.length > 0 && (
+                    <Card>
+                      <CardContent className="p-5 space-y-3">
+                        {/* Header row */}
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <h3 className="text-[13px] font-semibold" style={{ color: brand.navy }}>{t("yearComparison", lang)}</h3>
+                            <p className="text-[10px] text-slate-400 mt-0.5">{t("toggleYearsHint", lang)}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {/* Year pills */}
+                            <div className="flex gap-1">
+                              {[2022, 2023, 2024, 2025, 2026].map(y => (
+                                <YearPill key={y} year={y} active={compYears.includes(y)} onClick={() => togCompYear(y)} />
+                              ))}
+                            </div>
+                            <span className="w-px h-5 bg-slate-200" />
+                            {/* Mode toggle: all months vs single month */}
+                            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+                              <button onClick={() => setCompMonth(null)}
+                                className={`px-2.5 py-1 text-[11px] font-medium transition-colors ${compMonth === null ? "bg-slate-100 text-slate-700" : "text-slate-400 hover:text-slate-600"}`}>
+                                {t("allMonths", lang)}
+                              </button>
+                              <button onClick={() => setCompMonth(compMonth === null ? 1 : compMonth)}
+                                className={`px-2.5 py-1 text-[11px] font-medium transition-colors ${compMonth !== null ? "bg-slate-100 text-slate-700" : "text-slate-400 hover:text-slate-600"}`}>
+                                {t("singleMonth", lang)}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Month selector (visible only in single-month mode) */}
+                        {compMonth !== null && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[11px] text-slate-400 mr-1">{t("selectMonth", lang)}:</span>
+                            {MS[lang].map((m, mi) => (
+                              <button key={mi} onClick={() => setCompMonth(mi)}
+                                className={`px-2 py-0.5 text-[11px] rounded-full transition-colors ${compMonth === mi ? "bg-[#3EB1C8] text-white font-medium" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"}`}>
+                                {m}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Chart subtitle */}
+                        {compMonth !== null && (
+                          <p className="text-[11px] text-slate-500">
+                            {t("consumptionIn", lang)} <strong>{ML[lang][compMonth]}</strong> {t("acrossYears", lang)}
+                          </p>
+                        )}
+
+                        {/* Chart */}
+                        <ResponsiveContainer width="100%" height={240}>
+                          {compMonth === null ? (
+                            /* All months: grouped bars per year */
+                            <BarChart data={compChartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                              <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+                              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit={` ${meter.unit}`} axisLine={false} tickLine={false} />
+                              <Tooltip content={<BrandTooltip />} />
+                              <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+                              {compYears.map(y => (
+                                <Bar key={y} dataKey={`y${y}`} name={`${y}`} fill={yearColor[y]} radius={[3, 3, 0, 0]} />
+                              ))}
+                            </BarChart>
+                          ) : (
+                            /* Single month: one bar per year */
+                            <BarChart data={compChartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                              <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+                              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit={` ${meter.unit}`} axisLine={false} tickLine={false} />
+                              <Tooltip content={<BrandTooltip />} />
+                              <Bar dataKey="value" name={ML[lang][compMonth]} radius={[3, 3, 0, 0]}>
+                                {compChartData.map((entry, idx) => (
+                                  <Cell key={idx} fill={yearColor[+entry.name] || brand.blue} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          )}
+                        </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* ── Temperature chart (DH only) — with range selector ── */}
                   {tempData && (

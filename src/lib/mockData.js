@@ -310,6 +310,44 @@ export function getGraddageForMeter(meterId) {
   return { meterId, data };
 }
 
+/* ─── Historical Monthly Consumption (all utility types, 5 years) ─── */
+/** Generates 5 years × 12 months of monthly consumption for ANY meter type.
+ *  Returns { meterId, data: [{ year, monthIdx, value }] }
+ *  Current year (2026) values match generateMonthlyReadings() output for consistency.
+ */
+export function getHistoricalMonthly(meterId) {
+  const m = meters.find(x => x.id === meterId);
+  if (!m) return { meterId, data: [] };
+
+  const seed = m.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
+  const r = (n) => Math.sin(seed * 137 + n * 31) * 0.5 + 0.5;
+  const baseValue = m.lastReading.value || 100;
+
+  // Seasonal profiles per utility type (same as MeterDetailPage)
+  const profile = m.type === "fjernvarme"
+    ? [1.6, 1.5, 1.3, 0.8, 0.3, 0.1, 0.05, 0.05, 0.3, 0.9, 1.3, 1.6]
+    : m.type === "vand"
+    ? [1.0, 0.95, 0.95, 1.0, 1.05, 1.1, 1.1, 1.05, 1.0, 0.95, 0.95, 0.95]
+    : [1.1, 1.05, 1.0, 0.95, 0.9, 0.85, 0.85, 0.9, 0.95, 1.0, 1.05, 1.15];
+
+  const LATEST_MONTH = 1; // Feb = index 1 (current latest data month)
+  const factors = profile.map((p, i) => p + r(i) * 0.15);
+  const latestFactor = factors[LATEST_MONTH];
+
+  const data = [];
+  [2022, 2023, 2024, 2025, 2026].forEach(y => {
+    // Year-over-year drift: slight trend + meter-specific noise
+    const yearDrift = 1 + (y - 2024) * 0.015 + Math.sin(seed + y * 3) * 0.035;
+
+    profile.forEach((_, mi) => {
+      const value = +((baseValue * factors[mi] / latestFactor) * yearDrift * (1 + r(y * 12 + mi) * 0.08)).toFixed(1);
+      data.push({ year: y, monthIdx: mi, value });
+    });
+  });
+
+  return { meterId, data };
+}
+
 /* ─── Billing Cycles ─── */
 export const billingCycles = [
   { id: "2025-2026", label: "2025/2026", start: "2025-07-01", end: "2026-06-30", active: true },

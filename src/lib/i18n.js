@@ -475,6 +475,16 @@ export const dict = {
   srcHousingCorp:          { da: "Boligforening (KAB)",               en: "Housing Corporation (KAB)" },
   srcHousingCorpDesc:      { da: "Bygningsattributter fra boligforeningens ejendomssystem — areal, enheder, ejerskab", en: "Building attributes from housing corporation property system — area, units, ownership" },
 
+  /* ── Consumption comparison (year-over-year) ── */
+  compareYears:            { da: "Sammenlign år",                 en: "Compare years" },
+  allMonths:               { da: "Alle måneder",                  en: "All months" },
+  singleMonth:             { da: "Én måned",                      en: "Single month" },
+  selectMonth:             { da: "Vælg måned",                    en: "Select month" },
+  yearComparison:          { da: "Årssammenligning",              en: "Year comparison" },
+  consumptionIn:           { da: "Forbrug i",                     en: "Consumption in" },
+  acrossYears:             { da: "på tværs af år",                en: "across years" },
+  toggleYearsHint:         { da: "Tænd/sluk år for at sammenligne", en: "Toggle years on/off to compare" },
+
   /* EPC breakdown labels */
   epcRatingA:              { da: "Energimærke A",                     en: "EPC Rating A" },
   epcRatingB:              { da: "Energimærke B",                     en: "EPC Rating B" },
