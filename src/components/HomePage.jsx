@@ -43,7 +43,7 @@ function KpiCard({ icon: IconComp, label, value, sub, color }) {
           <IconComp size={18} style={{ color: color || brand.blue }} />
         </div>
         <div>
-          <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">{label}</p>
+          <p className="text-[10px] sm:text-[11px] font-medium text-slate-400 uppercase tracking-wider">{label}</p>
           <p className="text-xl font-bold tabular-nums" style={{ color: brand.navy }}>{value}</p>
           {sub && <p className="text-[11px] text-slate-400">{sub}</p>}
         </div>
@@ -61,58 +61,57 @@ function InsightRow({ rec, lang, navigate }) {
 
   return (
     <div
-      className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-lg border transition-all hover:shadow-sm cursor-pointer group"
+      className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 rounded-lg border transition-all hover:shadow-sm cursor-pointer group"
       style={{ borderColor: p.border, background: p.bg + "60" }}
       onClick={() => navigate(`/buildings/${rec.building.id}`)}
     >
-      {/* Icon */}
-      <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-        style={{ background: p.dot + "18" }}>
-        <CatIcon size={14} style={{ color: p.dot }} />
+      {/* Top row: icon + title + badge */}
+      <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: p.dot + "18" }}>
+          <CatIcon size={14} style={{ color: p.dot }} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <h4 className="text-[13px] font-semibold truncate" style={{ color: brand.navy }}>
+              {t(rec.titleKey, lang)}
+            </h4>
+            <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0"
+              style={{ background: p.dot + "15", color: p.text }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: p.dot }} />
+              {p.label[lang]}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] text-slate-400">
+            <Building2 size={10} />
+            <span className="font-medium group-hover:text-[#3EB1C8] transition-colors">{rec.building.name}</span>
+            <span>·</span>
+            <span>{t(rec.effortKey, lang)}</span>
+            <span>·</span>
+            <span>{t(rec.timelineKey, lang)}</span>
+          </div>
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <h4 className="text-[13px] font-semibold truncate" style={{ color: brand.navy }}>
-            {t(rec.titleKey, lang)}
-          </h4>
-          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold shrink-0"
-            style={{ background: p.dot + "15", color: p.text }}>
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: p.dot }} />
-            {p.label[lang]}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] text-slate-400">
-          <Building2 size={10} />
-          <span className="font-medium group-hover:text-[#3EB1C8] transition-colors">{rec.building.name}</span>
-          <span>·</span>
-          <span>{t(rec.effortKey, lang)}</span>
-          <span>·</span>
-          <span>{t(rec.timelineKey, lang)}</span>
-        </div>
+      {/* Bottom row on mobile: metric + savings inline */}
+      <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-11 sm:pl-0">
+        {rec.metric.target && (
+          <div className="flex items-center gap-1.5 text-[11px] shrink-0">
+            <span className="font-mono font-medium" style={{ color: p.dot }}>{rec.metric.value}</span>
+            <ArrowRight size={10} className="text-slate-300" />
+            <span className="font-mono font-medium text-emerald-600">{rec.metric.target}</span>
+          </div>
+        )}
+        {rec.savingDKK > 0 && (
+          <div className="text-right shrink-0">
+            <p className="text-sm font-bold text-emerald-700 tabular-nums">
+              {rec.savingDKK.toLocaleString("da-DK")} DKK
+            </p>
+            <p className="text-[10px] text-slate-400">/{lang === "da" ? "år" : "yr"}</p>
+          </div>
+        )}
+        <ExternalLink size={12} className="text-slate-300 group-hover:text-slate-500 shrink-0 hidden sm:block" />
       </div>
-
-      {/* Metric */}
-      {rec.metric.target && (
-        <div className="flex items-center gap-1.5 text-[11px] shrink-0">
-          <span className="font-mono font-medium" style={{ color: p.dot }}>{rec.metric.value}</span>
-          <ArrowRight size={10} className="text-slate-300" />
-          <span className="font-mono font-medium text-emerald-600">{rec.metric.target}</span>
-        </div>
-      )}
-
-      {/* Saving */}
-      {rec.savingDKK > 0 && (
-        <div className="text-right shrink-0">
-          <p className="text-sm font-bold text-emerald-700 tabular-nums">
-            {rec.savingDKK.toLocaleString("da-DK")} DKK
-          </p>
-          <p className="text-[10px] text-slate-400">/{lang === "da" ? "år" : "yr"}</p>
-        </div>
-      )}
-
-      <ExternalLink size={12} className="text-slate-300 group-hover:text-slate-500 shrink-0" />
     </div>
   );
 }
@@ -393,7 +392,7 @@ export default function HomePage() {
               </div>
               <div>
                 <div className="flex items-center gap-1">
-                  <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">{lang === "da" ? "Besparelsespotentiale" : "Savings Potential"}</p>
+                  <p className="text-[10px] sm:text-[10px] sm:text-[11px] font-medium text-slate-400 uppercase tracking-wider break-words hyphens-auto">{lang === "da" ? "Besparelsespotentiale" : "Savings Potential"}</p>
                   <InfoTooltip text={t("tooltipSavings", lang)} />
                 </div>
                 <p className="text-xl font-bold tabular-nums" style={{ color: brand.navy }}>{`${(totalSaving / 1000).toFixed(0)}k`}</p>

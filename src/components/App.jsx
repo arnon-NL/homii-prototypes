@@ -54,9 +54,9 @@ export default function App() {
 
         {/* Sidebar: hidden on mobile unless toggled, always visible on lg+ */}
         {sidebarOpen && (
-          <div className="lg:hidden fixed inset-0 z-30 bg-black/30" onClick={() => setSidebarOpen(false)} />
+          <div className="lg:hidden fixed inset-0 z-40 bg-black/30" onClick={() => setSidebarOpen(false)} />
         )}
-        <div className={`fixed lg:static z-30 h-full transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        <div className={`fixed lg:static z-50 h-full transition-transform duration-200 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
           <Sidebar
             lang={lang}
             onLangChange={setLang}

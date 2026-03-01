@@ -487,7 +487,7 @@ export default function MeterDetailPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-[1200px] mx-auto px-6 py-6">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-4 sm:py-6">
         <Breadcrumbs items={crumbs} />
 
         {/* Meter header */}
@@ -500,7 +500,7 @@ export default function MeterDetailPage() {
               <h1 className="text-xl font-semibold font-mono" style={{ color: brand.navy }}>{meter.id}</h1>
               <StatusBadge status={meter.status} lang={lang} />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <p className="text-sm text-slate-400">{t(meter.type, lang)} — {building?.name || meter.buildingId}</p>
               {/* Data source badge */}
               <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-500">
@@ -508,7 +508,7 @@ export default function MeterDetailPage() {
                 {meter.dataSource === "eloverblik" ? t("viaEloverblik", lang) : t("viaKamstrupReady", lang)}
               </span>
             </div>
-            <div className="flex items-center gap-4 mt-1.5 text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1.5 text-xs text-slate-500">
               <span>{t("lastReading", lang)}: <strong className="font-medium">{meter.lastReading.value} {meter.lastReading.unit}</strong></span>
               <span className="w-px h-3 bg-slate-200" />
               <span>{meter.lastReading.date}</span>
