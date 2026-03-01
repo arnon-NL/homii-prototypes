@@ -15,6 +15,7 @@ import SupplierListPage from "./SupplierListPage";
 import SupplierDetailPage from "./SupplierDetailPage";
 import ReportsPage from "./ReportsPage";
 import PlaceholderPage from "./PlaceholderPage";
+import DataSourcesPage from "./DataSourcesPage";
 
 const placeholderIcons = {
   inbox: Inbox,
@@ -77,7 +78,7 @@ export default function App() {
             <Route path="/inbox" element={<PlaceholderRoute pageKey="inbox" />} />
             <Route path="/tasks" element={<PlaceholderRoute pageKey="tasks" />} />
             <Route path="/workflows" element={<PlaceholderRoute pageKey="workflows" />} />
-            <Route path="/data-sources" element={<PlaceholderRoute pageKey="data-sources" />} />
+            <Route path="/data-sources" element={<DataSourcesPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>

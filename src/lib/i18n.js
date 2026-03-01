@@ -444,6 +444,24 @@ export const dict = {
   energyOptSection:        { da: "Energioptimering",                 en: "Energy Optimization" },
   offline:                 { da: "Offline",                          en: "Offline" },
   error:                   { da: "Fejl",                             en: "Error" },
+  /* ── Data Sources page ── */
+  dataSourcesSub:          { da: "Overvåg sundhed og status for dataintegrationerne", en: "Monitor health and status of data integrations" },
+  totalMeters:             { da: "Målere i alt",                      en: "Total meters" },
+  activeMeters:            { da: "Aktive målere",                     en: "Active meters" },
+  dataQualityAvg:          { da: "Datakvalitet",                      en: "Data quality" },
+  latency:                 { da: "Forsinkelse",                       en: "Latency" },
+  realTime:                { da: "Real-time",                         en: "Real-time" },
+  dPlus1:                  { da: "D+1 (næste dag)",                   en: "D+1 (next day)" },
+  qualityHigh:             { da: "Høj",                               en: "High" },
+  qualityMedium:           { da: "Middel",                            en: "Medium" },
+  qualityLow:              { da: "Lav",                               en: "Low" },
+  metersAttention:         { da: "Målere der kræver opmærksomhed",    en: "Meters requiring attention" },
+  tempDataCount:           { da: "målere med temperaturdata",         en: "meters with temperature data" },
+  noIssues:                { da: "Ingen problemer registreret",       en: "No issues detected" },
+  eloverblikDesc:          { da: "Dansk national datahub for elforbrugsdata", en: "Danish national data hub for electricity consumption" },
+  kamstrupDesc:            { da: "IoT-platform for fjernvarme- og vandmålere", en: "IoT platform for district heating and water meters" },
+  meterType:               { da: "Målertype",                        en: "Meter type" },
+  detail:                  { da: "Detalje",                           en: "Detail" },
 };
 
 export const t = (k, lang) => dict[k]?.[lang] || dict[k]?.en || k;
