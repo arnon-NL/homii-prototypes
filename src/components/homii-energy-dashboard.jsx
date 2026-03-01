@@ -962,6 +962,7 @@ export function GraddageReport({ navigate }) {
   const [tableVis, setTableVis] = useState([2025, 2026]);
   const [period, setPeriod] = useState("monthly");
   const [visibleMeterIds, setVisibleMeterIds] = useState(null);
+  const [expandedMeters, setExpandedMeters] = useState(new Set());
 
   const tog = y => setVis(p => p.includes(y) ? p.filter(x => x !== y) : [...p, y]);
   const togTable = y => setTableVis(p => p.includes(y) ? p.filter(x => x !== y) : [...p, y]);
@@ -1015,6 +1016,24 @@ export function GraddageReport({ navigate }) {
         row[`r${y}`] = +totalRaw.toFixed(1);
         row[`g${y}`] = +totalGaf.toFixed(1);
         row[`a${y}`] = count > 0 ? Math.round(totalDd / count) : 0;
+      });
+      return row;
+    });
+  }, [graddageData, vis, visibleSet]);
+
+  // Per-meter monthly data — for monthly view showing raw vs GAF per meter
+  const perMeterMonthly = useMemo(() => {
+    const visMeters = graddageData.filter(m => visibleSet.has(m.id));
+    // Only use the latest selected year for monthly per-meter view (cleaner than overlapping years)
+    const latestYear = vis.length > 0 ? Math.max(...vis) : 2026;
+    return GK.map((mk, mi) => {
+      const row = { name: mk };
+      visMeters.forEach(m => {
+        const pt = m.gd.data.find(d => d.year === latestYear && d.monthIdx === mi);
+        if (pt) {
+          row[`raw_${m.id}`] = +pt.raw.toFixed(1);
+          row[`gaf_${m.id}`] = +pt.gaf.toFixed(1);
+        }
       });
       return row;
     });
@@ -1118,19 +1137,26 @@ export function GraddageReport({ navigate }) {
       </div>
 
       {/* GAF Chart */}
-      <SectionCard title={period === "monthly" ? t("gafMonthly", lang) : t("gafYearly", lang)}>
-        {period === "yearly" && (
-          <p className="text-[11px] text-slate-400 mb-2 -mt-1">{t("gafYearlySub", lang)}</p>
-        )}
-        <ResponsiveContainer width="100%" height={300}>
+      <SectionCard title={period === "monthly" ? `${t("gafMonthly", lang)} — ${Math.max(...vis)}` : t("gafYearly", lang)}>
+        <p className="text-[11px] text-slate-400 mb-2 -mt-1">
+          {period === "monthly" ? t("gafMonthlySub", lang) : t("gafYearlySub", lang)}
+        </p>
+        <ResponsiveContainer width="100%" height={320}>
           {period === "monthly" ? (
-            <BarChart data={portfolioMonthly} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+            <BarChart data={perMeterMonthly} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" MWh" axisLine={false} tickLine={false} />
               <Tooltip content={<BrandTooltip />} />
               <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
-              {vis.map(y => <Bar key={y} dataKey={`g${y}`} name={`GAF ${y}`} fill={yearColor[y]} radius={[3, 3, 0, 0]} />)}
+              {/* Stacked raw bars per meter (grey shades) */}
+              {graddageData.filter(m => visibleSet.has(m.id)).map((m, idx) => (
+                <Bar key={`raw_${m.id}`} dataKey={`raw_${m.id}`} stackId="raw" name={`${m.buildingName} (${t("raw", lang)})`} fill={`hsl(215, 14%, ${68 + idx * 4}%)`} />
+              ))}
+              {/* Stacked GAF bars per meter (coloured) */}
+              {graddageData.filter(m => visibleSet.has(m.id)).map((m, idx) => (
+                <Bar key={`gaf_${m.id}`} dataKey={`gaf_${m.id}`} stackId="gaf" name={`${m.buildingName} (GAF)`} fill={COLORS[idx % COLORS.length]} radius={idx === graddageData.filter(x => visibleSet.has(x.id)).length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]} />
+              ))}
             </BarChart>
           ) : (
             <BarChart data={portfolioYearly.filter(x => vis.includes(+x.name))} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
@@ -1154,7 +1180,8 @@ export function GraddageReport({ navigate }) {
 
       {/* Degree Days vs Normal Year */}
       <SectionCard title={t("ddVsNormal", lang)}>
-        <p className="text-[11px] text-slate-400 mb-2 -mt-1">{t("normalYearExplain", lang)}</p>
+        <p className="text-[11px] text-slate-400 mb-1 -mt-1">{t("normalYearExplain", lang)}</p>
+        <p className="text-[10px] text-slate-400/70 mb-2 italic">{t("ddRegionNote", lang)}</p>
         <ResponsiveContainer width="100%" height={220}>
           <ComposedChart data={portfolioMonthly} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
@@ -1168,7 +1195,7 @@ export function GraddageReport({ navigate }) {
         </ResponsiveContainer>
       </SectionCard>
 
-      {/* Meter comparison table — with supplier filter, search, and dedicated year selector */}
+      {/* Meter comparison table — collapsible rows: latest year summary + expand for year-over-year */}
       <SectionCard title={t("meterComparison", lang)} noPad>
         <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-100">
           <Select value={supplierFilter} onValueChange={setSupplierFilter}>
@@ -1192,38 +1219,89 @@ export function GraddageReport({ navigate }) {
               </button>
             ))}
           </div>
+          <button onClick={() => {
+            if (expandedMeters.size === tableData.length) setExpandedMeters(new Set());
+            else setExpandedMeters(new Set(tableData.map(m => m.id)));
+          }} className="text-[10px] font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors" style={{ color: brand.blue }}>
+            {expandedMeters.size === tableData.length ? t("collapseYears", lang) : t("expandYears", lang)}
+          </button>
           <span className="ml-auto text-[11px] text-slate-400">{filtered.length} {t("meters", lang)}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px]" style={{ color: brand.muted }}>
+                <th className="px-4 py-2.5 text-left font-medium w-8"></th>
                 <th className="px-4 py-2.5 text-left font-medium">{t("meter", lang)}</th>
                 <th className="px-4 py-2.5 text-left font-medium">{t("building", lang)}</th>
-                {tableVis.map(y => (
-                  <Fragment key={y}>
-                    <th className="px-4 py-2.5 text-right font-medium">{t("rawCons", lang)} {y}</th>
-                    <th className="px-4 py-2.5 text-right font-medium">GAF {y}</th>
-                    <th className="px-4 py-2.5 text-right font-medium">GUF {y}</th>
-                  </Fragment>
-                ))}
+                <th className="px-4 py-2.5 text-center font-medium">{lang === "da" ? "År" : "Year"}</th>
+                <th className="px-4 py-2.5 text-right font-medium">{t("rawCons", lang)} (MWh)</th>
+                <th className="px-4 py-2.5 text-right font-medium">GAF (MWh)</th>
+                <th className="px-4 py-2.5 text-right font-medium">GUF</th>
+                <th className="px-4 py-2.5 text-right font-medium">{t("yoyChange", lang)}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {tableData.map((m) => (
-                <tr key={m.id} className="hover:bg-slate-50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/meters/${m.id}`)}>
-                  <td className="px-4 py-2 text-sm font-medium" style={{ color: brand.navy }}>{m.id}</td>
-                  <td className="px-4 py-2 text-sm text-slate-500">{m.buildingName}</td>
-                  {m.yearly.map(yd => (
-                    <Fragment key={yd.year}>
-                      <td className="px-4 py-2 text-sm text-right tabular-nums">{fmtNum(yd.raw)}</td>
-                      <td className="px-4 py-2 text-sm text-right tabular-nums font-medium" style={{ color: brand.blue }}>{fmtNum(yd.gaf)}</td>
-                      <td className="px-4 py-2 text-sm text-right tabular-nums">{fmtNum(yd.guf, 3)}</td>
-                    </Fragment>
-                  ))}
-                </tr>
-              ))}
+              {tableData.map((m) => {
+                const isExpanded = expandedMeters.has(m.id);
+                const latestYear = tableVis.length > 0 ? Math.max(...tableVis) : 2026;
+                const latestYd = m.yearly.find(yd => yd.year === latestYear) || m.yearly[m.yearly.length - 1];
+                const prevYd = m.yearly.find(yd => yd.year === latestYear - 1);
+                const yoyPct = prevYd && prevYd.gaf > 0 ? +(((latestYd.gaf - prevYd.gaf) / prevYd.gaf) * 100).toFixed(1) : null;
+                return (
+                  <Fragment key={m.id}>
+                    {/* Summary row — latest year */}
+                    <tr className="hover:bg-slate-50 cursor-pointer transition-colors group"
+                      onClick={() => {
+                        const next = new Set(expandedMeters);
+                        if (next.has(m.id)) next.delete(m.id); else next.add(m.id);
+                        setExpandedMeters(next);
+                      }}>
+                      <td className="px-4 py-2.5 text-center">
+                        <span className={`inline-block text-[10px] text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>▶</span>
+                      </td>
+                      <td className="py-2.5 text-sm font-medium" style={{ color: brand.navy }}>
+                        <span className="hover:underline" onClick={e => { e.stopPropagation(); navigate(`/meters/${m.id}`); }}>{m.id}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-slate-500">{m.buildingName}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold text-white" style={{ background: yearColor[latestYear] || brand.blue }}>{latestYear}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-right tabular-nums">{fmtNum(latestYd?.raw || 0)}</td>
+                      <td className="px-4 py-2.5 text-sm text-right tabular-nums font-medium" style={{ color: brand.blue }}>{fmtNum(latestYd?.gaf || 0)}</td>
+                      <td className="px-4 py-2.5 text-sm text-right tabular-nums">{fmtNum(latestYd?.guf || 1, 3)}</td>
+                      <td className="px-4 py-2.5 text-sm text-right tabular-nums">
+                        {yoyPct !== null ? (
+                          <span className={yoyPct > 2 ? "text-red-500 font-medium" : yoyPct < -2 ? "text-emerald-600 font-medium" : "text-slate-500"}>
+                            {yoyPct > 0 ? "+" : ""}{yoyPct}%
+                          </span>
+                        ) : <span className="text-slate-300">—</span>}
+                      </td>
+                    </tr>
+                    {/* Expanded rows — one per selected year (except latest which is in summary) */}
+                    {isExpanded && m.yearly.filter(yd => yd.year !== latestYear).sort((a, b) => b.year - a.year).map(yd => {
+                      const nextYd = m.yearly.find(x => x.year === yd.year + 1);
+                      const ydYoy = nextYd && nextYd.gaf > 0 ? +(((nextYd.gaf - yd.gaf) / yd.gaf) * 100).toFixed(1) : null;
+                      return (
+                        <tr key={`${m.id}_${yd.year}`} className="bg-slate-50/50 hover:bg-slate-100/70 transition-colors">
+                          <td className="px-4 py-1.5"></td>
+                          <td className="py-1.5 text-[11px] text-slate-400"></td>
+                          <td className="px-4 py-1.5 text-[11px] text-slate-400"></td>
+                          <td className="px-4 py-1.5 text-center">
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium text-white" style={{ background: yearColor[yd.year] || "#94A3B8" }}>{yd.year}</span>
+                          </td>
+                          <td className="px-4 py-1.5 text-[11px] text-right tabular-nums text-slate-500">{fmtNum(yd.raw)}</td>
+                          <td className="px-4 py-1.5 text-[11px] text-right tabular-nums font-medium" style={{ color: brand.midBlue || brand.blue }}>{fmtNum(yd.gaf)}</td>
+                          <td className="px-4 py-1.5 text-[11px] text-right tabular-nums text-slate-500">{fmtNum(yd.guf, 3)}</td>
+                          <td className="px-4 py-1.5 text-[11px] text-right tabular-nums text-slate-400">
+                            {ydYoy !== null ? `${ydYoy > 0 ? "+" : ""}${ydYoy}%` : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>

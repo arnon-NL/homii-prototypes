@@ -308,8 +308,14 @@ export const dict = {
   dhMetersCount:           { da: "Fjernvarmemålere",             en: "District Heating Meters" },
   tableYears:              { da: "Tabelår:",                      en: "Table years:" },
   gafYearlySub:            { da: "Rå forbrug (grå) vs. GAF-korrigeret forbrug (farvet) per måler per år", en: "Raw consumption (grey) vs. GAF-adjusted consumption (coloured) per meter per year" },
+  gafMonthlySub:           { da: "Rå forbrug (grå) vs. GAF-korrigeret forbrug (farvet) per måler per måned — sammenlign faktisk vs. vejrkorrigeret", en: "Raw consumption (grey) vs. GAF-adjusted consumption (coloured) per meter per month — compare actual vs. weather-adjusted" },
   normalYearExplain:       { da: "Normalårs-graddage = referenceværdi for gennemsnitligt vejr. GAF = forbrug korrigeret med GUF-faktor.",
                              en: "Normal-year degree days = reference value for average weather. GAF = consumption adjusted by GUF factor." },
+  ddRegionNote:            { da: "Graddage er en vejrmetrik for regionen — uafhængig af individuelle målere. Påvirkes kun af årsvalg.",
+                             en: "Degree days are a weather metric for the region — independent of individual meters. Only affected by year selection." },
+  expandYears:             { da: "Vis årsdetaljer",               en: "Show year details" },
+  collapseYears:           { da: "Skjul årsdetaljer",             en: "Hide year details" },
+  yoyChange:               { da: "Ændring ÅoÅ",                  en: "YoY Change" },
   portfolioOverview:       { da: "Porteføljeoversigt",          en: "Portfolio Overview" },
 
   // ── Temporal context ──
