@@ -192,6 +192,8 @@ export function getSupplier(supplierId) {
 export function getAfkoelingTimeSeries(meterId, weeks = 52) {
   const m = meters.find(x => x.id === meterId);
   if (!m || m.type !== "fjernvarme") return [];
+  // No temperature sensors → cannot derive afkøling
+  if (!m.hasTemperatureData) return [];
   const seed = meterId.charCodeAt(meterId.length - 1) + meterId.charCodeAt(meterId.length - 3) * 7;
   const r = (n) => Math.sin(seed * 100 + n * 17) * 0.5 + 0.5;
 

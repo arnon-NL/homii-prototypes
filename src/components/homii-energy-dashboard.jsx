@@ -649,11 +649,11 @@ export function CoolingReport({ navigate }) {
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => a.avgAfkoeling - b.avgAfkoeling), [filtered]);
 
-  // Visible meters for the chart (default = all filtered)
-  const allFilteredIds = useMemo(() => new Set(filtered.map(m => m.meterId)), [filtered]);
+  // Visible meters for the chart (only meters with temperature data can show afkøling)
+  const allFilteredTempIds = useMemo(() => new Set(filtered.filter(m => m.hasTemperatureData).map(m => m.meterId)), [filtered]);
   // Reset selection when filter changes
   useEffect(() => { setVisibleMeterIds(null); }, [supplierFilter, search]);
-  const visibleSet = visibleMeterIds || allFilteredIds;
+  const visibleSet = visibleMeterIds || allFilteredTempIds;
   const toggleMeter = (id) => {
     const current = new Set(visibleSet);
     if (current.has(id)) current.delete(id); else current.add(id);
@@ -662,14 +662,18 @@ export function CoolingReport({ navigate }) {
   const selectAllMeters = () => setVisibleMeterIds(null);
   const deselectAllMeters = () => setVisibleMeterIds(new Set());
 
-  // Portfolio KPIs (based on filtered set)
-  const portfolioAvg = filtered.length > 0 ? +(filtered.reduce((s, m) => s + m.avgAfkoeling, 0) / filtered.length).toFixed(1) : 0;
-  const inBonus = filtered.filter(m => m.avgAfkoeling <= thr).length;
-  const inSurcharge = filtered.filter(m => m.avgAfkoeling > thr).length;
+  // Meters with actual temperature data (can calculate afkøling)
+  const metersWithTemp = filtered.filter(m => m.hasTemperatureData);
+  const metersWithoutTemp = filtered.filter(m => !m.hasTemperatureData);
+
+  // Portfolio KPIs (only meters with temperature data)
+  const portfolioAvg = metersWithTemp.length > 0 ? +(metersWithTemp.reduce((s, m) => s + m.avgAfkoeling, 0) / metersWithTemp.length).toFixed(1) : 0;
+  const inBonus = metersWithTemp.filter(m => m.avgAfkoeling <= thr).length;
+  const inSurcharge = metersWithTemp.filter(m => m.avgAfkoeling > thr).length;
   const isBonus = portfolioAvg <= thr;
 
-  // Financial impact
-  const totalArea = filtered.reduce((s, m) => s + m.buildingArea, 0);
+  // Financial impact (only meters with temp data contribute)
+  const totalArea = metersWithTemp.reduce((s, m) => s + m.buildingArea, 0);
   const annualMWh = totalArea * 0.12;
   const deviation = portfolioAvg - thr;
   const correction = deviation * HOFOR.korrektionPct * HOFOR.energiprisPerMWh * annualMWh;
@@ -765,14 +769,16 @@ export function CoolingReport({ navigate }) {
             unit={`DKK${t("perYear", lang)}`}
             sub={isBonus ? t("annualSaving", lang) : t("annualCost", lang)}
             status={isBonus ? "good" : "bad"} />
-          <Metric label={t("metersInBonus", lang)} value={inBonus} unit={`/ ${filtered.length}`} status={inBonus === filtered.length ? "good" : "warn"} />
-          <Metric label={t("metersInSurcharge", lang)} value={inSurcharge} unit={`/ ${filtered.length}`} status={inSurcharge === 0 ? "good" : "bad"} />
+          <Metric label={t("metersInBonus", lang)} value={inBonus} unit={`/ ${metersWithTemp.length}`} status={inBonus === metersWithTemp.length ? "good" : "warn"}
+            sub={metersWithoutTemp.length > 0 ? `${metersWithoutTemp.length} ${t("noTempData", lang).toLowerCase()}` : undefined} />
+          <Metric label={t("metersInSurcharge", lang)} value={inSurcharge} unit={`/ ${metersWithTemp.length}`} status={inSurcharge === 0 ? "good" : "bad"} />
         </div>
 
         {/* Meter (de)selection chips */}
+        {/* Meter (de)selection chips */}
         <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("selectedMeters", lang)} ({visibleSet.size} / {filtered.length})</span>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("selectedMeters", lang)} ({visibleSet.size} / {metersWithTemp.length})</span>
             <div className="flex gap-2">
               <button onClick={selectAllMeters} className="text-[11px] font-medium px-2 py-0.5 rounded hover:bg-slate-100 transition-colors" style={{ color: brand.blue }}>{t("selectAll", lang)}</button>
               <button onClick={deselectAllMeters} className="text-[11px] font-medium px-2 py-0.5 rounded hover:bg-slate-100 transition-colors text-slate-400">{t("deselectAll", lang)}</button>
@@ -780,8 +786,19 @@ export function CoolingReport({ navigate }) {
           </div>
           <div className="flex flex-wrap gap-1.5">
             {filtered.map((m, idx) => {
-              const active = visibleSet.has(m.meterId);
+              const hasTemp = m.hasTemperatureData;
+              const active = hasTemp && visibleSet.has(m.meterId);
               const color = LINE_COLORS[idx % LINE_COLORS.length];
+              if (!hasTemp) {
+                // No temperature data — show as disabled chip
+                return (
+                  <span key={m.meterId} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border border-dashed border-slate-200 text-slate-300 bg-slate-50 cursor-not-allowed" title={t("noTempData", lang)}>
+                    <span className="w-2 h-2 rounded-full border border-slate-200 bg-slate-100" />
+                    {m.buildingName}
+                    <span className="text-[10px] text-slate-300">—</span>
+                  </span>
+                );
+              }
               return (
                 <button key={m.meterId} onClick={() => toggleMeter(m.meterId)}
                   className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${active ? "border-transparent text-white shadow-sm" : "border-slate-200 text-slate-400 bg-white hover:bg-slate-50"}`}
@@ -881,31 +898,38 @@ export function CoolingReport({ navigate }) {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {visibleRows.map(m => {
-                  const dev = +(m.avgAfkoeling - thr).toFixed(1);
+                  const hasTemp = m.hasTemperatureData;
+                  const dev = hasTemp ? +(m.avgAfkoeling - thr).toFixed(1) : null;
                   return (
-                    <tr key={m.meterId} className="hover:bg-slate-50/80 transition-colors cursor-pointer" onClick={() => openDetail(m.meterId)}>
+                    <tr key={m.meterId} className={`transition-colors ${hasTemp ? "hover:bg-slate-50/80 cursor-pointer" : "bg-slate-50/40 opacity-60"}`} onClick={() => hasTemp && openDetail(m.meterId)}>
                       <td className="px-5 py-2.5">
                         <span className="text-sm font-mono font-medium" style={{ color: brand.navy }}>{m.meterId}</span>
-                        {!m.hasTemperatureData && <span className="ml-1.5 text-[9px] text-slate-400 bg-slate-100 px-1 py-0.5 rounded">{t("noTempData", lang)}</span>}
+                        {!hasTemp && <span className="ml-1.5 text-[9px] text-amber-600 bg-amber-50 px-1 py-0.5 rounded font-medium">{t("noTempData", lang)}</span>}
                       </td>
                       <td className="px-5 py-2.5 text-sm text-slate-600">{m.buildingName}</td>
                       <td className="px-5 py-2.5 text-right">
-                        <span className={`text-sm font-semibold tabular-nums ${m.avgAfkoeling <= thr ? "text-emerald-600" : m.avgAfkoeling <= thr * 1.1 ? "text-amber-500" : "text-red-500"}`}>
-                          {m.avgAfkoeling}
-                        </span>
-                        <span className="text-xs text-slate-400 ml-1">kWh/m³</span>
+                        {hasTemp ? (<>
+                          <span className={`text-sm font-semibold tabular-nums ${m.avgAfkoeling <= thr ? "text-emerald-600" : m.avgAfkoeling <= thr * 1.1 ? "text-amber-500" : "text-red-500"}`}>
+                            {m.avgAfkoeling}
+                          </span>
+                          <span className="text-xs text-slate-400 ml-1">kWh/m³</span>
+                        </>) : <span className="text-xs text-slate-300">—</span>}
                       </td>
                       <td className="px-5 py-2.5 text-right">
-                        <span className={`text-sm tabular-nums font-medium ${dev <= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                          {dev > 0 ? "+" : ""}{dev}
-                        </span>
+                        {hasTemp ? (
+                          <span className={`text-sm tabular-nums font-medium ${dev <= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                            {dev > 0 ? "+" : ""}{dev}
+                          </span>
+                        ) : <span className="text-xs text-slate-300">—</span>}
                       </td>
-                      <td className="px-5 py-2.5 text-center"><TariffBadge afk={m.avgAfkoeling} /></td>
-                      <td className="px-5 py-2.5 text-center"><Sparkline data={m.sparkline} threshold={thr} /></td>
+                      <td className="px-5 py-2.5 text-center">{hasTemp ? <TariffBadge afk={m.avgAfkoeling} /> : <span className="text-xs text-slate-300">—</span>}</td>
+                      <td className="px-5 py-2.5 text-center">{hasTemp ? <Sparkline data={m.sparkline} threshold={thr} /> : <span className="text-xs text-slate-300">—</span>}</td>
                       <td className="px-5 py-2.5 text-right">
-                        <button className="text-[11px] font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors" style={{ color: brand.blue }}>
-                          {t("detailedView", lang)} →
-                        </button>
+                        {hasTemp ? (
+                          <button className="text-[11px] font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors" style={{ color: brand.blue }}>
+                            {t("detailedView", lang)} →
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   );
