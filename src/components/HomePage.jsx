@@ -392,7 +392,7 @@ export default function HomePage() {
               </div>
               <div>
                 <div className="flex items-center gap-1">
-                  <p className="text-[10px] sm:text-[10px] sm:text-[11px] font-medium text-slate-400 uppercase tracking-wider break-words hyphens-auto">{lang === "da" ? "Besparelsespotentiale" : "Savings Potential"}</p>
+                  <p className="text-[10px] sm:text-[11px] font-medium text-slate-400 uppercase tracking-wider break-words hyphens-auto">{lang === "da" ? "Besparelsespotentiale" : "Savings Potential"}</p>
                   <InfoTooltip text={t("tooltipSavings", lang)} />
                 </div>
                 <p className="text-xl font-bold tabular-nums" style={{ color: brand.navy }}>{`${(totalSaving / 1000).toFixed(0)}k`}</p>
