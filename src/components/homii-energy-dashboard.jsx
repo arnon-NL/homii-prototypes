@@ -951,10 +951,12 @@ export function GraddageReport({ navigate }) {
   const [supplierFilter, setSupplierFilter] = useState("hofor");
   const [search, setSearch] = useState("");
   const [vis, setVis] = useState([2024, 2025, 2026]);
+  const [tableVis, setTableVis] = useState([2025, 2026]);
   const [period, setPeriod] = useState("monthly");
   const [visibleMeterIds, setVisibleMeterIds] = useState(null);
 
   const tog = y => setVis(p => p.includes(y) ? p.filter(x => x !== y) : [...p, y]);
+  const togTable = y => setTableVis(p => p.includes(y) ? p.filter(x => x !== y) : [...p, y]);
 
   // DH meters only
   const dhMeters = useMemo(() => allMeters.filter(m => m.type === "fjernvarme"), []);
@@ -1010,29 +1012,33 @@ export function GraddageReport({ navigate }) {
     });
   }, [graddageData, vis, visibleSet]);
 
-  // Portfolio yearly totals
+  // Portfolio yearly totals — with per-meter breakdown for stacked chart
   const portfolioYearly = useMemo(() => {
     const visMeters = graddageData.filter(m => visibleSet.has(m.id));
     return [2022, 2023, 2024, 2025, 2026].map(y => {
       let totalRaw = 0, totalGaf = 0, totalDd = 0, count = 0;
-      visMeters.forEach(m => {
+      const row = { name: `${y}` };
+      visMeters.forEach((m, idx) => {
         const yData = m.gd.data.filter(d => d.year === y);
-        totalRaw += yData.reduce((s, d) => s + d.raw, 0);
-        totalGaf += yData.reduce((s, d) => s + d.gaf, 0);
+        const mRaw = yData.reduce((s, d) => s + d.raw, 0);
+        const mGaf = yData.reduce((s, d) => s + d.gaf, 0);
+        totalRaw += mRaw; totalGaf += mGaf;
         totalDd += yData.reduce((s, d) => s + d.degreeDays, 0);
         if (yData.length > 0) count++;
+        row[`raw_${m.id}`] = +mRaw.toFixed(0);
+        row[`gaf_${m.id}`] = +mGaf.toFixed(0);
       });
       const avgGuf = totalDd > 0 ? +(GNT / (totalDd / (count || 1))).toFixed(3) : 1;
-      return { name: `${y}`, raw: +totalRaw.toFixed(0), gaf: +totalGaf.toFixed(0), dd: Math.round(totalDd / (count || 1)), guf: avgGuf };
+      return { ...row, raw: +totalRaw.toFixed(0), gaf: +totalGaf.toFixed(0), dd: Math.round(totalDd / (count || 1)), guf: avgGuf };
     });
   }, [graddageData, vis, visibleSet]);
 
   // KPIs for current year
   const currentYear = portfolioYearly.find(y => y.name === "2026") || { raw: 0, gaf: 0, dd: 0, guf: 1 };
 
-  // Table: per-meter yearly summary for visible years
+  // Table: per-meter yearly summary — uses tableVis (independent year selection)
   const tableData = useMemo(() => graddageData.map(m => {
-    const yearly = vis.map(y => {
+    const yearly = tableVis.map(y => {
       const yData = m.gd.data.filter(d => d.year === y);
       const raw = yData.reduce((s, d) => s + d.raw, 0);
       const gaf = yData.reduce((s, d) => s + d.gaf, 0);
@@ -1041,7 +1047,7 @@ export function GraddageReport({ navigate }) {
       return { year: y, raw: +raw.toFixed(0), gaf: +gaf.toFixed(0), guf, deviation: raw > 0 ? +(((gaf - raw) / raw) * 100).toFixed(1) : 0 };
     });
     return { ...m, yearly };
-  }), [graddageData, vis]);
+  }), [graddageData, tableVis]);
 
   // Meter colors for chart lines
   const COLORS = [brand.blue, brand.midBlue, brand.amber, brand.green, "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#6366F1", "#84CC16"];
@@ -1105,6 +1111,9 @@ export function GraddageReport({ navigate }) {
 
       {/* GAF Chart */}
       <SectionCard title={period === "monthly" ? t("gafMonthly", lang) : t("gafYearly", lang)}>
+        {period === "yearly" && (
+          <p className="text-[11px] text-slate-400 mb-2 -mt-1">{t("gafYearlySub", lang)}</p>
+        )}
         <ResponsiveContainer width="100%" height={300}>
           {period === "monthly" ? (
             <BarChart data={portfolioMonthly} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
@@ -1122,8 +1131,14 @@ export function GraddageReport({ navigate }) {
               <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" MWh" axisLine={false} tickLine={false} />
               <Tooltip content={<BrandTooltip />} />
               <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
-              <Bar dataKey="raw" name={t("rawCons", lang)} fill="#CBD5E1" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="gaf" name={t("gafAdj", lang)} fill={brand.blue} radius={[3, 3, 0, 0]} />
+              {/* Stacked raw bars per meter (grey shades) */}
+              {graddageData.filter(m => visibleSet.has(m.id)).map((m, idx) => (
+                <Bar key={`raw_${m.id}`} dataKey={`raw_${m.id}`} stackId="raw" name={`${m.buildingName} (${t("raw", lang)})`} fill={`hsl(215, 14%, ${68 + idx * 4}%)`} />
+              ))}
+              {/* Stacked GAF bars per meter (coloured) */}
+              {graddageData.filter(m => visibleSet.has(m.id)).map((m, idx) => (
+                <Bar key={`gaf_${m.id}`} dataKey={`gaf_${m.id}`} stackId="gaf" name={`${m.buildingName} (GAF)`} fill={COLORS[idx % COLORS.length]} radius={idx === graddageData.filter(x => visibleSet.has(x.id)).length - 1 ? [3, 3, 0, 0] : [0, 0, 0, 0]} />
+              ))}
             </BarChart>
           )}
         </ResponsiveContainer>
@@ -1131,6 +1146,7 @@ export function GraddageReport({ navigate }) {
 
       {/* Degree Days vs Normal Year */}
       <SectionCard title={t("ddVsNormal", lang)}>
+        <p className="text-[11px] text-slate-400 mb-2 -mt-1">{t("normalYearExplain", lang)}</p>
         <ResponsiveContainer width="100%" height={220}>
           <ComposedChart data={portfolioMonthly} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
@@ -1144,7 +1160,7 @@ export function GraddageReport({ navigate }) {
         </ResponsiveContainer>
       </SectionCard>
 
-      {/* Meter comparison table — with supplier filter + search (matches CoolingReport pattern) */}
+      {/* Meter comparison table — with supplier filter, search, and dedicated year selector */}
       <SectionCard title={t("meterComparison", lang)} noPad>
         <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-slate-100">
           <Select value={supplierFilter} onValueChange={setSupplierFilter}>
@@ -1155,9 +1171,19 @@ export function GraddageReport({ navigate }) {
             </SelectContent>
           </Select>
           <input
-            type="text" placeholder={t("searchMeter", lang)} value={search} onChange={e => setSearch(e.target.value)}
+            type="text" placeholder={t("searchMeters", lang)} value={search} onChange={e => setSearch(e.target.value)}
             className="h-8 w-[180px] rounded-md border border-slate-200 px-2.5 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#3EB1C8]"
           />
+          <div className="flex items-center gap-1.5 ml-2">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">{t("tableYears", lang)}</span>
+            {[2022, 2023, 2024, 2025, 2026].map(y => (
+              <button key={y} onClick={() => togTable(y)}
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium transition-all duration-200 ${tableVis.includes(y) ? "text-white shadow-sm" : "text-slate-400 bg-transparent hover:bg-slate-100"}`}
+                style={tableVis.includes(y) ? { background: yearColor[y] } : {}}>
+                {y}
+              </button>
+            ))}
+          </div>
           <span className="ml-auto text-[11px] text-slate-400">{filtered.length} {t("meters", lang)}</span>
         </div>
         <div className="overflow-x-auto">
@@ -1166,7 +1192,7 @@ export function GraddageReport({ navigate }) {
               <tr className="border-b border-slate-200 bg-slate-50/80 text-[11px]" style={{ color: brand.muted }}>
                 <th className="px-4 py-2.5 text-left font-medium">{t("meter", lang)}</th>
                 <th className="px-4 py-2.5 text-left font-medium">{t("building", lang)}</th>
-                {vis.map(y => (
+                {tableVis.map(y => (
                   <Fragment key={y}>
                     <th className="px-4 py-2.5 text-right font-medium">{t("rawCons", lang)} {y}</th>
                     <th className="px-4 py-2.5 text-right font-medium">GAF {y}</th>
@@ -1178,10 +1204,10 @@ export function GraddageReport({ navigate }) {
             <tbody className="divide-y divide-slate-100">
               {tableData.map((m) => (
                 <tr key={m.id} className="hover:bg-slate-50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/meter/${m.id}`)}>
+                  onClick={() => navigate(`/meters/${m.id}`)}>
                   <td className="px-4 py-2 text-sm font-medium" style={{ color: brand.navy }}>{m.id}</td>
                   <td className="px-4 py-2 text-sm text-slate-500">{m.buildingName}</td>
-                  {m.yearly.filter(yd => vis.includes(yd.year)).map(yd => (
+                  {m.yearly.map(yd => (
                     <Fragment key={yd.year}>
                       <td className="px-4 py-2 text-sm text-right tabular-nums">{yd.raw.toLocaleString(lang === "da" ? "da-DK" : "en-US")}</td>
                       <td className="px-4 py-2 text-sm text-right tabular-nums font-medium" style={{ color: brand.blue }}>{yd.gaf.toLocaleString(lang === "da" ? "da-DK" : "en-US")}</td>

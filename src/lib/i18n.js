@@ -306,6 +306,10 @@ export const dict = {
   colderThanNormal:        { da: "Koldere end normalår",        en: "Colder than normal year" },
   warmerThanNormal:        { da: "Varmere end normalår",        en: "Warmer than normal year" },
   dhMetersCount:           { da: "Fjernvarmemålere",             en: "District Heating Meters" },
+  tableYears:              { da: "Tabelår:",                      en: "Table years:" },
+  gafYearlySub:            { da: "Rå forbrug (grå) vs. GAF-korrigeret forbrug (farvet) per måler per år", en: "Raw consumption (grey) vs. GAF-adjusted consumption (coloured) per meter per year" },
+  normalYearExplain:       { da: "Normalårs-graddage = referenceværdi for gennemsnitligt vejr. GAF = forbrug korrigeret med GUF-faktor.",
+                             en: "Normal-year degree days = reference value for average weather. GAF = consumption adjusted by GUF factor." },
   portfolioOverview:       { da: "Porteføljeoversigt",          en: "Portfolio Overview" },
 
   // ── Temporal context ──
