@@ -190,7 +190,7 @@ export default function DataSourcesPage() {
                       <div className="text-[13px] font-medium text-slate-700 mt-0.5">
                         {records?.coverage?.covered || 0} / {records?.coverage?.total || 0}
                         <span className="text-slate-400 font-normal ml-1">
-                          {t(src.entityType === "meters" ? "ofMeters" : "ofBuildings", lang)}
+                          {t("ofBuildings", lang)}
                         </span>
                       </div>
                     </div>
