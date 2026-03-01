@@ -330,6 +330,9 @@ export default function MeterDetailPage() {
   const [showGaf, setShowGaf] = useState(false);
   const [showDegreeDays, setShowDegreeDays] = useState(false);
 
+  /* ── Consumption trend year selector ── */
+  const [selectedYear, setSelectedYear] = useState(2026);
+
   /* ── Year comparison state ── */
   const [compYears, setCompYears] = useState([2024, 2025, 2026]);
   const [compMonth, setCompMonth] = useState(null); // null = all months, 0-11 = single month
@@ -352,7 +355,7 @@ export default function MeterDetailPage() {
   const historical = useMemo(() => getHistoricalMonthly(meter.id), [meter.id]);
   const togCompYear = (y) => setCompYears(p => p.includes(y) ? p.filter(x => x !== y) : [...p, y].sort());
 
-  // Comparison chart data: pivoted for Recharts
+  // Comparison chart data: pivoted for Recharts (includes status for forecast styling)
   const compChartData = useMemo(() => {
     if (!historical.data.length) return [];
     const ms = MS[lang];
@@ -363,7 +366,10 @@ export default function MeterDetailPage() {
         const entry = { name: m, _monthIdx: mi };
         compYears.forEach(y => {
           const row = historical.data.find(d => d.year === y && d.monthIdx === mi);
-          if (row) entry[`y${y}`] = row.value;
+          if (row) {
+            entry[`y${y}`] = row.value;
+            entry[`s${y}`] = row.status; // "actual" or "forecast"
+          }
         });
         return entry;
       });
@@ -371,7 +377,7 @@ export default function MeterDetailPage() {
       // Single month mode: x-axis = years, one bar per year
       return compYears.map(y => {
         const row = historical.data.find(d => d.year === y && d.monthIdx === compMonth);
-        return { name: `${y}`, value: row?.value || 0 };
+        return { name: `${y}`, value: row?.value || 0, status: row?.status || "actual" };
       });
     }
   }, [historical, compYears, compMonth, lang]);
@@ -409,21 +415,44 @@ export default function MeterDetailPage() {
     });
   }, [graddage, isDH, lang]);
 
+  /* ── Year-aware monthly data for consumption trend ── */
+  const yearMonthlyData = useMemo(() => {
+    if (!historical.data.length) return monthlyData;
+    const ms = MS[lang];
+    const yearRows = historical.data.filter(d => d.year === selectedYear);
+    if (yearRows.length === 0) return monthlyData;
+    return yearRows.map(d => ({
+      name: ms[d.monthIdx],
+      _monthIdx: d.monthIdx,
+      value: d.value,
+      status: d.status,
+    }));
+  }, [historical, selectedYear, monthlyData, lang]);
+
+  /* ── Merge GAF overlay when viewing 2026 DH meters ── */
+  const yearMonthlyWithGaf = useMemo(() => {
+    if (!isDH || selectedYear !== 2026 || !graddage.data.length) return yearMonthlyData;
+    return yearMonthlyData.map((pt, mi) => {
+      const gRow = graddage.data.find(d => d.year === 2026 && d.monthIdx === mi);
+      return gRow ? { ...pt, raw: gRow.raw, gaf: gRow.gaf, guf: gRow.guf, degreeDays: gRow.degreeDays, normalDD: gRow.normalDegreeDays } : pt;
+    });
+  }, [yearMonthlyData, graddage, isDH, selectedYear]);
+
   /* Drill-down chart data — use GAF-enriched data at year level for DH meters */
   const zoomData = useMemo(() => {
-    if (chartZoom.level === "year") return isDH ? monthlyWithGaf : monthlyData;
+    if (chartZoom.level === "year") return isDH && selectedYear === 2026 ? yearMonthlyWithGaf : yearMonthlyData;
     if (chartZoom.level === "month") {
-      const monthValue = monthlyData[chartZoom.monthIdx]?.value || 0;
+      const monthValue = yearMonthlyData[chartZoom.monthIdx]?.value || 0;
       return generateDailyData(meter, chartZoom.monthIdx, monthValue);
     }
     if (chartZoom.level === "day") {
-      const monthValue = monthlyData[chartZoom.monthIdx]?.value || 0;
+      const monthValue = yearMonthlyData[chartZoom.monthIdx]?.value || 0;
       const dailyData = generateDailyData(meter, chartZoom.monthIdx, monthValue);
       const dayValue = dailyData.find(d => d.day === chartZoom.dayOfMonth)?.value || 0;
       return generateHourlyData(meter, chartZoom.monthIdx, chartZoom.dayOfMonth, dayValue);
     }
-    return monthlyData;
-  }, [chartZoom, monthlyData, monthlyWithGaf, meter, isDH]);
+    return yearMonthlyData;
+  }, [chartZoom, yearMonthlyData, yearMonthlyWithGaf, meter, isDH, selectedYear]);
 
   /* Can we drill deeper from current level? */
   const canDrillDown = chartZoom.level === "year" || (chartZoom.level === "month" && isHourly);
@@ -439,10 +468,10 @@ export default function MeterDetailPage() {
 
   /* Chart period label */
   const periodLabel = chartZoom.level === "year"
-    ? t("last12Months", lang)
+    ? `${selectedYear}`
     : chartZoom.level === "month"
-    ? `${ML[lang][chartZoom.monthIdx]} 2026`
-    : `${chartZoom.dayOfMonth}. ${MS[lang][chartZoom.monthIdx]} 2026`;
+    ? `${ML[lang][chartZoom.monthIdx]} ${selectedYear}`
+    : `${chartZoom.dayOfMonth}. ${MS[lang][chartZoom.monthIdx]} ${selectedYear}`;
 
   /* Handle bar click for drill-down */
   const handleBarClick = (data, index) => {
@@ -581,8 +610,8 @@ export default function MeterDetailPage() {
                       <div className="flex items-center justify-between mb-1">
                         <h3 className="text-[13px] font-semibold text-slate-600">{t("consumptionTrend", lang)}</h3>
                         <div className="flex items-center gap-2">
-                          {/* GAF toggle — DH meters only, year-level only */}
-                          {isDH && chartZoom.level === "year" && (
+                          {/* GAF toggle — DH meters only, year-level only, 2026 only */}
+                          {isDH && chartZoom.level === "year" && selectedYear === 2026 && (
                             <button onClick={() => setShowGaf(g => !g)}
                               className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium border transition-all ${showGaf ? "border-transparent text-white shadow-sm" : "border-slate-200 text-slate-400 bg-white hover:bg-slate-50"}`}
                               style={showGaf ? { backgroundColor: brand.blue } : {}}>
@@ -590,17 +619,25 @@ export default function MeterDetailPage() {
                               {t("showGafOverlay", lang)}
                             </button>
                           )}
-                          <TimePeriodLabel text={periodLabel} />
+                          {/* Year selector pills */}
+                          {chartZoom.level === "year" && (
+                            <div className="flex gap-1">
+                              {[2022, 2023, 2024, 2025, 2026].map(y => (
+                                <YearPill key={y} year={y} active={selectedYear === y} onClick={() => { setSelectedYear(y); setChartZoom({ level: "year" }); if (y !== 2026) setShowGaf(false); }} />
+                              ))}
+                            </div>
+                          )}
+                          {chartZoom.level !== "year" && <TimePeriodLabel text={periodLabel} />}
                         </div>
                       </div>
 
                       {/* GAF overlay hint */}
-                      {showGaf && isDH && chartZoom.level === "year" && (
+                      {showGaf && isDH && chartZoom.level === "year" && selectedYear === 2026 && (
                         <p className="text-[10px] text-slate-400 mb-1">{t("gafOverlayHint", lang)}</p>
                       )}
 
                       {/* GUF info strip — shown when GAF overlay is active */}
-                      {showGaf && isDH && chartZoom.level === "year" && currentYearGaf && (
+                      {showGaf && isDH && chartZoom.level === "year" && selectedYear === 2026 && currentYearGaf && (
                         <div className="flex items-center gap-4 px-3 py-2 mb-2 bg-slate-50 rounded-lg text-[11px] text-slate-500">
                           <span>GUF 2026: <strong className="text-slate-700">{fmtNum(currentYearGaf.guf, 3)}</strong></span>
                           <span className="w-px h-3 bg-slate-200" />
@@ -618,7 +655,7 @@ export default function MeterDetailPage() {
                         <div className="flex items-center gap-1 text-[11px] text-slate-400 mb-2">
                           <button onClick={() => setChartZoom({ level: "year" })}
                             className="hover:text-[#3EB1C8] transition-colors cursor-pointer">
-                            {t("last12Months", lang)}
+                            {selectedYear}
                           </button>
                           <ChevronRight size={10} />
                           {chartZoom.level === "month" && (
@@ -644,14 +681,14 @@ export default function MeterDetailPage() {
                         </p>
                       )}
 
-                      <ResponsiveContainer width="100%" height={showGaf && isDH && chartZoom.level === "year" ? 260 : 200}>
+                      <ResponsiveContainer width="100%" height={showGaf && isDH && chartZoom.level === "year" && selectedYear === 2026 ? 260 : 200}>
                         <ComposedChart data={zoomData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                           <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false}
                             interval={chartZoom.level === "day" ? 1 : "preserveStartEnd"} />
                           <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit={` ${meter.lastReading.unit}`} axisLine={false} tickLine={false} />
                           <Tooltip content={<BrandTooltip />} />
-                          {showGaf && isDH && chartZoom.level === "year" ? (
+                          {showGaf && isDH && chartZoom.level === "year" && selectedYear === 2026 ? (
                             <>
                               {/* GAF mode: raw (grey) + GAF (colored) side by side */}
                               <Bar dataKey="raw" name={t("rawCons", lang)} fill="#CBD5E1" radius={[3, 3, 0, 0]}
@@ -662,20 +699,36 @@ export default function MeterDetailPage() {
                             </>
                           ) : (
                             <>
-                              {/* Standard mode: single value bars + trend line */}
-                              <Bar dataKey="value" name={t(meter.type, lang)} fill={color} fillOpacity={canDrillDown ? 0.2 : 0.15}
+                              {/* Standard mode: bars with forecast distinction + trend line */}
+                              <Bar dataKey="value" name={t(meter.type, lang)} fill={color}
                                 radius={[3, 3, 0, 0]}
                                 cursor={canDrillDown ? "pointer" : "default"}
-                                onClick={(data, index) => canDrillDown && handleBarClick(data, index)} />
+                                onClick={(data, index) => canDrillDown && handleBarClick(data, index)}>
+                                {zoomData.map((entry, idx) => (
+                                  <Cell key={idx} fill={color} fillOpacity={entry.status === "forecast" ? 0.12 : canDrillDown ? 0.2 : 0.15} />
+                                ))}
+                              </Bar>
                               <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2}
-                                dot={{ r: 2.5, fill: color, strokeWidth: 0 }} name={t(meter.type, lang)} />
+                                dot={(props) => {
+                                  const { cx, cy, payload } = props;
+                                  return payload?.status === "forecast"
+                                    ? <circle key={`dot-${props.index}`} cx={cx} cy={cy} r={2.5} fill={color} fillOpacity={0.35} strokeWidth={0} />
+                                    : <circle key={`dot-${props.index}`} cx={cx} cy={cy} r={2.5} fill={color} strokeWidth={0} />;
+                                }}
+                                strokeDasharray={(d) => "none"}
+                                name={t(meter.type, lang)} />
                             </>
                           )}
                         </ComposedChart>
                       </ResponsiveContainer>
 
-                      {/* Collapsible Degree Days detail — DH meters, GAF mode, year level */}
-                      {isDH && showGaf && chartZoom.level === "year" && degreeDaysMonthly.length > 0 && (
+                      {/* Forecast legend note — shown when viewing a year with forecast data */}
+                      {chartZoom.level === "year" && zoomData.some(d => d.status === "forecast") && (
+                        <p className="text-[10px] text-slate-400 mt-1 italic">{t("forecastNote", lang)}</p>
+                      )}
+
+                      {/* Collapsible Degree Days detail — DH meters, GAF mode, year level, 2026 only */}
+                      {isDH && showGaf && chartZoom.level === "year" && selectedYear === 2026 && degreeDaysMonthly.length > 0 && (
                         <div className="mt-3 border-t border-slate-100 pt-3">
                           <button onClick={() => setShowDegreeDays(d => !d)}
                             className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors">
@@ -766,7 +819,11 @@ export default function MeterDetailPage() {
                               <Tooltip content={<BrandTooltip />} />
                               <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
                               {compYears.map(y => (
-                                <Bar key={y} dataKey={`y${y}`} name={`${y}`} fill={yearColor[y]} radius={[3, 3, 0, 0]} />
+                                <Bar key={y} dataKey={`y${y}`} name={`${y}`} fill={yearColor[y]} radius={[3, 3, 0, 0]}>
+                                  {compChartData.map((entry, idx) => (
+                                    <Cell key={idx} fill={yearColor[y]} fillOpacity={entry[`s${y}`] === "forecast" ? 0.35 : 1} />
+                                  ))}
+                                </Bar>
                               ))}
                             </BarChart>
                           ) : (
@@ -778,12 +835,17 @@ export default function MeterDetailPage() {
                               <Tooltip content={<BrandTooltip />} />
                               <Bar dataKey="value" name={ML[lang][compMonth]} radius={[3, 3, 0, 0]}>
                                 {compChartData.map((entry, idx) => (
-                                  <Cell key={idx} fill={yearColor[+entry.name] || brand.blue} />
+                                  <Cell key={idx} fill={yearColor[+entry.name] || brand.blue} fillOpacity={entry.status === "forecast" ? 0.35 : 1} />
                                 ))}
                               </Bar>
                             </BarChart>
                           )}
                         </ResponsiveContainer>
+
+                        {/* Forecast legend for year comparison */}
+                        {compChartData.some(d => compYears.some(y => d[`s${y}`] === "forecast") || d.status === "forecast") && (
+                          <p className="text-[10px] text-slate-400 mt-1 italic">{t("forecastNote", lang)}</p>
+                        )}
                       </CardContent>
                     </Card>
                   )}

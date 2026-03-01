@@ -334,6 +334,11 @@ export function getHistoricalMonthly(meterId) {
   const factors = profile.map((p, i) => p + r(i) * 0.15);
   const latestFactor = factors[LATEST_MONTH];
 
+  // Cutoff for actual vs forecast: based on meter's lastReading date
+  const cutoffDate = m.lastReading?.date ? new Date(m.lastReading.date) : new Date("2026-02-28");
+  const cutoffYear = cutoffDate.getFullYear();
+  const cutoffMonth = cutoffDate.getMonth(); // 0-indexed (Feb = 1)
+
   const data = [];
   [2022, 2023, 2024, 2025, 2026].forEach(y => {
     // Year-over-year drift: slight trend + meter-specific noise
@@ -341,7 +346,11 @@ export function getHistoricalMonthly(meterId) {
 
     profile.forEach((_, mi) => {
       const value = +((baseValue * factors[mi] / latestFactor) * yearDrift * (1 + r(y * 12 + mi) * 0.08)).toFixed(1);
-      data.push({ year: y, monthIdx: mi, value });
+      // Status: "actual" for historical data, "forecast" for future months in current year
+      const status = y < cutoffYear ? "actual"
+        : y === cutoffYear && mi <= cutoffMonth ? "actual"
+        : "forecast";
+      data.push({ year: y, monthIdx: mi, value, status });
     });
   });
 

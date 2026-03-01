@@ -487,6 +487,12 @@ export const dict = {
   acrossYears:             { da: "på tværs af år",                en: "across years" },
   toggleYearsHint:         { da: "Tænd/sluk år for at sammenligne", en: "Toggle years on/off to compare" },
 
+  /* ── Forecast / actual distinction ── */
+  forecast:                { da: "Prognose",                        en: "Forecast" },
+  actual:                  { da: "Faktisk",                         en: "Actual" },
+  forecastNote:            { da: "Stiplet = homii prognose",        en: "Dashed = homii forecast" },
+  selectYear:              { da: "Vælg år",                         en: "Select year" },
+
   /* EPC breakdown labels */
   epcRatingA:              { da: "Energimærke A",                     en: "EPC Rating A" },
   epcRatingB:              { da: "Energimærke B",                     en: "EPC Rating B" },
