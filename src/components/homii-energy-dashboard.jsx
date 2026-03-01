@@ -282,16 +282,17 @@ function ConsumptionDash() {
 
         <SectionCard title={null}>
           <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={coolData} margin={{top:5,right:20,bottom:5,left:0}}>
+            <ComposedChart data={coolData} margin={{top:5,right:45,bottom:5,left:0}}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
               <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-              <YAxis tick={{fontSize:11, fill:brand.muted}} unit="°C" domain={[0, 90]} axisLine={false} tickLine={false} />
+              <YAxis tick={{fontSize:11, fill:brand.muted}} unit="°C" domain={[0, 100]} axisLine={false} tickLine={false} />
               <Tooltip content={<BrandTooltip/>}/>
               <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
               <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`${t("req",lang)}: ${thr}°C`,fill:brand.red,fontSize:10,position:"right"}}/>
               <Line type="monotone" dataKey="supply" stroke={brand.red} strokeWidth={1.5} dot={false} name={t("supplyLine",lang)}/>
               <Line type="monotone" dataKey="return" stroke={brand.amber} strokeWidth={1.5} dot={false} name={t("returnLine",lang)}/>
               <Line type="monotone" dataKey="cooling" stroke={brand.blue} strokeWidth={2} dot={{r:2.5,fill:brand.blue,strokeWidth:0}} name={t("coolingLine",lang)}/>
+              <Line dataKey="none" stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} name={t("hoforStandardLine",lang)} legendType="plainline" dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </SectionCard>
@@ -322,10 +323,11 @@ function ConsumptionDash() {
 
         <SectionCard title={null}>
           <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={coolData} margin={{top:5,right:20,bottom:5,left:0}}>
+            <ComposedChart data={coolData} margin={{top:5,right:45,bottom:5,left:0}}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
               <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-              <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" kWh/m³" axisLine={false} tickLine={false} />
+              <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" kWh/m³" axisLine={false} tickLine={false}
+                domain={[0, (dataMax) => Math.ceil(dataMax * 1.1)]} />
               <Tooltip content={<BrandTooltip/>}/>
               <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
               {/* Shaded area above threshold = surcharge zone */}
@@ -337,6 +339,7 @@ function ConsumptionDash() {
                 <Line type="monotone" data={compareData} dataKey="afkoeling" stroke={brand.midBlue} strokeWidth={1.5} strokeDasharray="6 3" dot={false}
                   name={`${t("afkoelingLine",lang)} (${meters.find(m=>m.id===compareMeter)?.l || compareMeter})`} />
               )}
+              <Line dataKey="none" stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} name={t("hoforThreshold",lang)} legendType="plainline" dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </SectionCard>
@@ -366,20 +369,22 @@ function ConsumptionDash() {
         <SectionCard title={cmp ? `${t("heat",lang)} – ${ml[cmpM]} (${t("compAcross",lang)})` : `${t("heat",lang)} – ${t("monthlyCons",lang)} (MWh)`}>
           <ResponsiveContainer width="100%" height={300}>
             {cmp ? (
-              <BarChart data={cmpData} margin={{top:5,right:20,bottom:5,left:0}}>
+              <BarChart data={cmpData} margin={{top:10,right:20,bottom:5,left:0}}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                 <XAxis dataKey="name" tick={{fontSize:12, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-                <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false} />
+                <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false}
+                  domain={[0, (dataMax) => Math.ceil(dataMax * 1.1)]} />
                 <Tooltip content={<BrandTooltip/>}/>
                 <Bar dataKey="value" name={`${t("heat",lang)} (MWh)`} radius={[4,4,0,0]} barSize={48}>
                   {cmpData?.map((d,idx)=><Cell key={idx} fill={d.fill}/>)}
                 </Bar>
               </BarChart>
             ) : (
-              <BarChart data={barData} margin={{top:5,right:20,bottom:5,left:0}}>
+              <BarChart data={barData} margin={{top:10,right:20,bottom:5,left:0}}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                 <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-                <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false} />
+                <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false}
+                  domain={[0, (dataMax) => Math.ceil(dataMax * 1.1)]} />
                 <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
                 {vis.map(y=><Bar key={y} dataKey={`h${y}`} name={`${y}`} fill={yearColor[y]} radius={[3,3,0,0]}/>)}
               </BarChart>

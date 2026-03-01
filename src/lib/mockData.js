@@ -357,13 +357,6 @@ export function getHistoricalMonthly(meterId) {
   return { meterId, data };
 }
 
-/* ─── Billing Cycles ─── */
-export const billingCycles = [
-  { id: "2025-2026", label: "2025/2026", start: "2025-07-01", end: "2026-06-30", active: true },
-  { id: "2024-2025", label: "2024/2025", start: "2024-07-01", end: "2025-06-30", active: false },
-  { id: "2023-2024", label: "2023/2024", start: "2023-07-01", end: "2024-06-30", active: false },
-];
-
 /* ═══════════════════════════════════════════════════════
    Data Sources — source-agnostic integration registry
    Each source declares what it syncs, how often, and its

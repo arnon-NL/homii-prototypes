@@ -6,7 +6,7 @@ import { Flame, Droplets, Zap, Activity, ChevronRight, AlertCircle, Radio, Clock
 import { BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend, ReferenceLine } from "recharts";
 import { brand, EPC_COLORS, HOFOR } from "@/lib/brand";
 import { t, useLang, MS, ML } from "@/lib/i18n";
-import { getMeter, getBuilding, getSupplier, meters, billingCycles, getGraddageForMeter, getHistoricalMonthly, GK, GN, GNT } from "@/lib/mockData";
+import { getMeter, getBuilding, getSupplier, meters, getGraddageForMeter, getHistoricalMonthly, GK, GN, GNT } from "@/lib/mockData";
 import { yearColor } from "@/lib/brand";
 import { YearPill } from "@/components/ui/year-pill";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -272,10 +272,11 @@ function GafBenchmark({ meter, lang }) {
         {/* GAF chart */}
         {gafView === "monthly" ? (
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={monthlyChart} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+            <BarChart data={monthlyChart} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" MWh" axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" MWh" axisLine={false} tickLine={false}
+                domain={[0, (dataMax) => Math.ceil(dataMax * 1.1)]} />
               <Tooltip content={<BrandTooltip />} />
               <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
               {gafVis.map(y => <Bar key={y} dataKey={`g${y}`} name={`GAF ${y}`} fill={yearColor[y]} radius={[3, 3, 0, 0]} />)}
@@ -283,10 +284,11 @@ function GafBenchmark({ meter, lang }) {
           </ResponsiveContainer>
         ) : (
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={yearlyTotals.filter(x => gafVis.includes(+x.name))} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+            <BarChart data={yearlyTotals.filter(x => gafVis.includes(+x.name))} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" MWh" axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" MWh" axisLine={false} tickLine={false}
+                domain={[0, (dataMax) => Math.ceil(dataMax * 1.1)]} />
               <Tooltip content={<BrandTooltip />} />
               <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
               <Bar dataKey="raw" name={t("rawCons", lang)} fill="#CBD5E1" radius={[3, 3, 0, 0]} />
@@ -385,35 +387,34 @@ export default function MeterDetailPage() {
   /* ── GAF data for DH meters — used for overlay on consumption trend ── */
   const isDH = meter.type === "fjernvarme";
   const graddage = useMemo(() => isDH ? getGraddageForMeter(meter.id) : { data: [] }, [meter.id, isDH]);
-  const currentYearGaf = useMemo(() => {
+  const selectedYearGaf = useMemo(() => {
     if (!isDH || !graddage.data.length) return null;
-    const rows2026 = graddage.data.filter(d => d.year === 2026);
-    if (rows2026.length === 0) return null;
-    const totalRaw = rows2026.reduce((s, d) => s + d.raw, 0);
-    const totalGaf = rows2026.reduce((s, d) => s + d.gaf, 0);
-    const totalDd = rows2026.reduce((s, d) => s + d.degreeDays, 0);
+    const rows = graddage.data.filter(d => d.year === selectedYear);
+    if (rows.length === 0) return null;
+    const totalRaw = rows.reduce((s, d) => s + d.raw, 0);
+    const totalGaf = rows.reduce((s, d) => s + d.gaf, 0);
+    const totalDd = rows.reduce((s, d) => s + d.degreeDays, 0);
     const guf = totalDd > 0 ? +(GNT / totalDd).toFixed(3) : 1;
     return { raw: +totalRaw.toFixed(0), gaf: +totalGaf.toFixed(0), dd: totalDd, guf };
-  }, [graddage, isDH]);
+  }, [graddage, isDH, selectedYear]);
 
-  // Monthly data with GAF overlay — merge graddage into consumption trend data
+  // Monthly data with GAF overlay — merge graddage into consumption trend data (unused legacy, kept for safety)
   const monthlyWithGaf = useMemo(() => {
     if (!isDH || !graddage.data.length) return monthlyData;
-    const ms = MS[lang];
     return monthlyData.map((pt, mi) => {
       const gRow = graddage.data.find(d => d.year === 2026 && d.monthIdx === mi);
       return gRow ? { ...pt, raw: gRow.raw, gaf: gRow.gaf, guf: gRow.guf, degreeDays: gRow.degreeDays, normalDD: gRow.normalDegreeDays } : pt;
     });
-  }, [monthlyData, graddage, isDH, lang]);
+  }, [monthlyData, graddage, isDH]);
 
-  // Degree days monthly for collapsible chart
+  // Degree days monthly for collapsible chart — uses selectedYear
   const degreeDaysMonthly = useMemo(() => {
     if (!isDH || !graddage.data.length) return [];
     return GK.map((mk, mi) => {
-      const row = graddage.data.find(d => d.year === 2026 && d.monthIdx === mi);
+      const row = graddage.data.find(d => d.year === selectedYear && d.monthIdx === mi);
       return { name: MS[lang][mi], ng: GN[mk], actual: row ? row.degreeDays : 0 };
     });
-  }, [graddage, isDH, lang]);
+  }, [graddage, isDH, lang, selectedYear]);
 
   /* ── Year-aware monthly data for consumption trend ── */
   const yearMonthlyData = useMemo(() => {
@@ -429,18 +430,18 @@ export default function MeterDetailPage() {
     }));
   }, [historical, selectedYear, monthlyData, lang]);
 
-  /* ── Merge GAF overlay when viewing 2026 DH meters ── */
+  /* ── Merge GAF overlay for any selected year on DH meters ── */
   const yearMonthlyWithGaf = useMemo(() => {
-    if (!isDH || selectedYear !== 2026 || !graddage.data.length) return yearMonthlyData;
+    if (!isDH || !graddage.data.length) return yearMonthlyData;
     return yearMonthlyData.map((pt, mi) => {
-      const gRow = graddage.data.find(d => d.year === 2026 && d.monthIdx === mi);
+      const gRow = graddage.data.find(d => d.year === selectedYear && d.monthIdx === mi);
       return gRow ? { ...pt, raw: gRow.raw, gaf: gRow.gaf, guf: gRow.guf, degreeDays: gRow.degreeDays, normalDD: gRow.normalDegreeDays } : pt;
     });
   }, [yearMonthlyData, graddage, isDH, selectedYear]);
 
   /* Drill-down chart data — use GAF-enriched data at year level for DH meters */
   const zoomData = useMemo(() => {
-    if (chartZoom.level === "year") return isDH && selectedYear === 2026 ? yearMonthlyWithGaf : yearMonthlyData;
+    if (chartZoom.level === "year") return isDH ? yearMonthlyWithGaf : yearMonthlyData;
     if (chartZoom.level === "month") {
       const monthValue = yearMonthlyData[chartZoom.monthIdx]?.value || 0;
       return generateDailyData(meter, chartZoom.monthIdx, monthValue);
@@ -547,15 +548,6 @@ export default function MeterDetailPage() {
           </div>
         )}
 
-        {/* Billing cycle label */}
-        {(() => { const activeCycle = billingCycles.find(c => c.active); return activeCycle ? (
-          <div className="flex items-center gap-2 mb-4 text-[11px] text-slate-400">
-            <span className="font-medium">{t("billingCycleLabel", lang)}:</span>
-            <span className="bg-slate-100 rounded px-2 py-0.5 font-mono text-[10px]">{activeCycle.label}</span>
-            <span className="text-slate-300">({activeCycle.start} → {activeCycle.end})</span>
-          </div>
-        ) : null; })()}
-
         {/* Content: tabs + attribute panel */}
         <div className="flex flex-col xl:flex-row gap-6">
           <div className="flex-1 min-w-0">
@@ -610,8 +602,8 @@ export default function MeterDetailPage() {
                       <div className="flex items-center justify-between mb-1">
                         <h3 className="text-[13px] font-semibold text-slate-600">{t("consumptionTrend", lang)}</h3>
                         <div className="flex items-center gap-2">
-                          {/* GAF toggle — DH meters only, year-level only, 2026 only */}
-                          {isDH && chartZoom.level === "year" && selectedYear === 2026 && (
+                          {/* GAF toggle — DH meters only, year-level only */}
+                          {isDH && chartZoom.level === "year" && (
                             <button onClick={() => setShowGaf(g => !g)}
                               className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium border transition-all ${showGaf ? "border-transparent text-white shadow-sm" : "border-slate-200 text-slate-400 bg-white hover:bg-slate-50"}`}
                               style={showGaf ? { backgroundColor: brand.blue } : {}}>
@@ -623,7 +615,7 @@ export default function MeterDetailPage() {
                           {chartZoom.level === "year" && (
                             <div className="flex gap-1">
                               {[2022, 2023, 2024, 2025, 2026].map(y => (
-                                <YearPill key={y} year={y} active={selectedYear === y} onClick={() => { setSelectedYear(y); setChartZoom({ level: "year" }); if (y !== 2026) setShowGaf(false); }} />
+                                <YearPill key={y} year={y} active={selectedYear === y} onClick={() => { setSelectedYear(y); setChartZoom({ level: "year" }); }} />
                               ))}
                             </div>
                           )}
@@ -632,20 +624,20 @@ export default function MeterDetailPage() {
                       </div>
 
                       {/* GAF overlay hint */}
-                      {showGaf && isDH && chartZoom.level === "year" && selectedYear === 2026 && (
+                      {showGaf && isDH && chartZoom.level === "year" && (
                         <p className="text-[10px] text-slate-400 mb-1">{t("gafOverlayHint", lang)}</p>
                       )}
 
                       {/* GUF info strip — shown when GAF overlay is active */}
-                      {showGaf && isDH && chartZoom.level === "year" && selectedYear === 2026 && currentYearGaf && (
+                      {showGaf && isDH && chartZoom.level === "year" && selectedYearGaf && (
                         <div className="flex items-center gap-4 px-3 py-2 mb-2 bg-slate-50 rounded-lg text-[11px] text-slate-500">
-                          <span>GUF 2026: <strong className="text-slate-700">{fmtNum(currentYearGaf.guf, 3)}</strong></span>
+                          <span>GUF {selectedYear}: <strong className="text-slate-700">{fmtNum(selectedYearGaf.guf, 3)}</strong></span>
                           <span className="w-px h-3 bg-slate-200" />
-                          <span>{t("degreeDays", lang)}: <strong className="text-slate-700">{fmtNum(currentYearGaf.dd)}</strong></span>
+                          <span>{t("degreeDays", lang)}: <strong className="text-slate-700">{fmtNum(selectedYearGaf.dd)}</strong></span>
                           <span className="text-slate-300">({t("normalYear", lang)}: {fmtNum(GNT)})</span>
                           <span className="text-slate-300">·</span>
-                          <span className={currentYearGaf.guf > 1 ? "text-blue-500" : "text-amber-500"}>
-                            {currentYearGaf.guf > 1 ? t("colderThanNormal", lang) : t("warmerThanNormal", lang)}
+                          <span className={selectedYearGaf.guf > 1 ? "text-blue-500" : "text-amber-500"}>
+                            {selectedYearGaf.guf > 1 ? t("colderThanNormal", lang) : t("warmerThanNormal", lang)}
                           </span>
                         </div>
                       )}
@@ -681,14 +673,22 @@ export default function MeterDetailPage() {
                         </p>
                       )}
 
-                      <ResponsiveContainer width="100%" height={showGaf && isDH && chartZoom.level === "year" && selectedYear === 2026 ? 260 : 200}>
-                        <ComposedChart data={zoomData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                      <ResponsiveContainer width="100%" height={showGaf && isDH && chartZoom.level === "year" ? 260 : 200}>
+                        <ComposedChart data={zoomData} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
+                          {/* SVG hatch pattern for forecast bars */}
+                          <defs>
+                            <pattern id={`forecast-hatch-${meter.id}`} patternUnits="userSpaceOnUse" width={6} height={6} patternTransform="rotate(45)">
+                              <rect width={6} height={6} fill={color} fillOpacity={0.10} />
+                              <line x1={0} y1={0} x2={0} y2={6} stroke={color} strokeWidth={1.5} strokeOpacity={0.25} />
+                            </pattern>
+                          </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                           <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false}
                             interval={chartZoom.level === "day" ? 1 : "preserveStartEnd"} />
-                          <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit={` ${meter.lastReading.unit}`} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit={` ${meter.lastReading.unit}`} axisLine={false} tickLine={false}
+                            domain={[0, (dataMax) => Math.ceil(dataMax * 1.1)]} />
                           <Tooltip content={<BrandTooltip />} />
-                          {showGaf && isDH && chartZoom.level === "year" && selectedYear === 2026 ? (
+                          {showGaf && isDH && chartZoom.level === "year" ? (
                             <>
                               {/* GAF mode: raw (grey) + GAF (colored) side by side */}
                               <Bar dataKey="raw" name={t("rawCons", lang)} fill="#CBD5E1" radius={[3, 3, 0, 0]}
@@ -699,36 +699,46 @@ export default function MeterDetailPage() {
                             </>
                           ) : (
                             <>
-                              {/* Standard mode: bars with forecast distinction + trend line */}
+                              {/* Standard mode: actual bars solid, forecast bars hatched */}
                               <Bar dataKey="value" name={t(meter.type, lang)} fill={color}
                                 radius={[3, 3, 0, 0]}
                                 cursor={canDrillDown ? "pointer" : "default"}
                                 onClick={(data, index) => canDrillDown && handleBarClick(data, index)}>
                                 {zoomData.map((entry, idx) => (
-                                  <Cell key={idx} fill={color} fillOpacity={entry.status === "forecast" ? 0.12 : canDrillDown ? 0.2 : 0.15} />
+                                  <Cell key={idx}
+                                    fill={entry.status === "forecast" ? `url(#forecast-hatch-${meter.id})` : color}
+                                    fillOpacity={entry.status === "forecast" ? 1 : 0.2} />
                                 ))}
                               </Bar>
                               <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2}
                                 dot={(props) => {
                                   const { cx, cy, payload } = props;
                                   return payload?.status === "forecast"
-                                    ? <circle key={`dot-${props.index}`} cx={cx} cy={cy} r={2.5} fill={color} fillOpacity={0.35} strokeWidth={0} />
+                                    ? <circle key={`dot-${props.index}`} cx={cx} cy={cy} r={2.5} fill="white" stroke={color} strokeWidth={1.5} strokeDasharray="2 1" />
                                     : <circle key={`dot-${props.index}`} cx={cx} cy={cy} r={2.5} fill={color} strokeWidth={0} />;
                                 }}
-                                strokeDasharray={(d) => "none"}
                                 name={t(meter.type, lang)} />
                             </>
                           )}
                         </ComposedChart>
                       </ResponsiveContainer>
 
-                      {/* Forecast legend note — shown when viewing a year with forecast data */}
+                      {/* Forecast legend — shown when viewing a year with forecast data */}
                       {chartZoom.level === "year" && zoomData.some(d => d.status === "forecast") && (
-                        <p className="text-[10px] text-slate-400 mt-1 italic">{t("forecastNote", lang)}</p>
+                        <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-400">
+                          <span className="flex items-center gap-1.5">
+                            <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: color, opacity: 0.2 }} />
+                            {t("actual", lang)}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <svg width={12} height={12} className="rounded-sm"><defs><pattern id="legend-hatch" patternUnits="userSpaceOnUse" width={4} height={4} patternTransform="rotate(45)"><rect width={4} height={4} fill={color} fillOpacity={0.10} /><line x1={0} y1={0} x2={0} y2={4} stroke={color} strokeWidth={1} strokeOpacity={0.3} /></pattern></defs><rect width={12} height={12} fill="url(#legend-hatch)" /></svg>
+                            {t("forecast", lang)}
+                          </span>
+                        </div>
                       )}
 
-                      {/* Collapsible Degree Days detail — DH meters, GAF mode, year level, 2026 only */}
-                      {isDH && showGaf && chartZoom.level === "year" && selectedYear === 2026 && degreeDaysMonthly.length > 0 && (
+                      {/* Collapsible Degree Days detail — DH meters, GAF mode, year level */}
+                      {isDH && showGaf && chartZoom.level === "year" && degreeDaysMonthly.length > 0 && (
                         <div className="mt-3 border-t border-slate-100 pt-3">
                           <button onClick={() => setShowDegreeDays(d => !d)}
                             className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors">
@@ -746,7 +756,7 @@ export default function MeterDetailPage() {
                                   <Tooltip content={<BrandTooltip />} />
                                   <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
                                   <Line type="monotone" dataKey="ng" stroke={brand.red} strokeWidth={1.5} strokeDasharray="6 4" dot={false} name={t("normalYear", lang)} />
-                                  <Line type="monotone" dataKey="actual" stroke={brand.blue} strokeWidth={1.5} dot={{ r: 2 }} name={`${t("actual", lang)} 2026`} />
+                                  <Line type="monotone" dataKey="actual" stroke={brand.blue} strokeWidth={1.5} dot={{ r: 2 }} name={`${t("actual", lang)} ${selectedYear}`} />
                                 </ComposedChart>
                               </ResponsiveContainer>
                             </div>
@@ -812,31 +822,51 @@ export default function MeterDetailPage() {
                         <ResponsiveContainer width="100%" height={240}>
                           {compMonth === null ? (
                             /* All months: grouped bars per year */
-                            <BarChart data={compChartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                            <BarChart data={compChartData} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
+                              <defs>
+                                {compYears.map(y => (
+                                  <pattern key={y} id={`comp-hatch-${y}`} patternUnits="userSpaceOnUse" width={5} height={5} patternTransform="rotate(45)">
+                                    <rect width={5} height={5} fill={yearColor[y]} fillOpacity={0.15} />
+                                    <line x1={0} y1={0} x2={0} y2={5} stroke={yearColor[y]} strokeWidth={1.2} strokeOpacity={0.35} />
+                                  </pattern>
+                                ))}
+                              </defs>
                               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                               <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
-                              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit={` ${meter.unit}`} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit={` ${meter.unit}`} axisLine={false} tickLine={false}
+                                domain={[0, (dataMax) => Math.ceil(dataMax * 1.08)]} />
                               <Tooltip content={<BrandTooltip />} />
                               <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
                               {compYears.map(y => (
                                 <Bar key={y} dataKey={`y${y}`} name={`${y}`} fill={yearColor[y]} radius={[3, 3, 0, 0]}>
                                   {compChartData.map((entry, idx) => (
-                                    <Cell key={idx} fill={yearColor[y]} fillOpacity={entry[`s${y}`] === "forecast" ? 0.35 : 1} />
+                                    <Cell key={idx} fill={entry[`s${y}`] === "forecast" ? `url(#comp-hatch-${y})` : yearColor[y]} />
                                   ))}
                                 </Bar>
                               ))}
                             </BarChart>
                           ) : (
                             /* Single month: one bar per year */
-                            <BarChart data={compChartData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                            <BarChart data={compChartData} margin={{ top: 10, right: 10, bottom: 5, left: 0 }}>
+                              <defs>
+                                {compYears.map(y => (
+                                  <pattern key={y} id={`comp-sm-hatch-${y}`} patternUnits="userSpaceOnUse" width={5} height={5} patternTransform="rotate(45)">
+                                    <rect width={5} height={5} fill={yearColor[y]} fillOpacity={0.15} />
+                                    <line x1={0} y1={0} x2={0} y2={5} stroke={yearColor[y]} strokeWidth={1.2} strokeOpacity={0.35} />
+                                  </pattern>
+                                ))}
+                              </defs>
                               <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                               <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
-                              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit={` ${meter.unit}`} axisLine={false} tickLine={false} />
+                              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit={` ${meter.unit}`} axisLine={false} tickLine={false}
+                                domain={[0, (dataMax) => Math.ceil(dataMax * 1.08)]} />
                               <Tooltip content={<BrandTooltip />} />
                               <Bar dataKey="value" name={ML[lang][compMonth]} radius={[3, 3, 0, 0]}>
-                                {compChartData.map((entry, idx) => (
-                                  <Cell key={idx} fill={yearColor[+entry.name] || brand.blue} fillOpacity={entry.status === "forecast" ? 0.35 : 1} />
-                                ))}
+                                {compChartData.map((entry, idx) => {
+                                  const yr = +entry.name;
+                                  const c = yearColor[yr] || brand.blue;
+                                  return <Cell key={idx} fill={entry.status === "forecast" ? `url(#comp-sm-hatch-${yr})` : c} />;
+                                })}
                               </Bar>
                             </BarChart>
                           )}
@@ -844,7 +874,16 @@ export default function MeterDetailPage() {
 
                         {/* Forecast legend for year comparison */}
                         {compChartData.some(d => compYears.some(y => d[`s${y}`] === "forecast") || d.status === "forecast") && (
-                          <p className="text-[10px] text-slate-400 mt-1 italic">{t("forecastNote", lang)}</p>
+                          <div className="flex items-center gap-3 mt-1 text-[10px] text-slate-400">
+                            <span className="flex items-center gap-1.5">
+                              <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: brand.blue }} />
+                              {t("actual", lang)}
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <svg width={12} height={12} className="rounded-sm"><defs><pattern id="comp-legend-hatch" patternUnits="userSpaceOnUse" width={4} height={4} patternTransform="rotate(45)"><rect width={4} height={4} fill={brand.blue} fillOpacity={0.15} /><line x1={0} y1={0} x2={0} y2={4} stroke={brand.blue} strokeWidth={1} strokeOpacity={0.35} /></pattern></defs><rect width={12} height={12} fill="url(#comp-legend-hatch)" /></svg>
+                              {t("forecast", lang)}
+                            </span>
+                          </div>
                         )}
                       </CardContent>
                     </Card>
@@ -882,11 +921,11 @@ export default function MeterDetailPage() {
                           </div>
                         </div>
                         <ResponsiveContainer width="100%" height={240}>
-                          <ComposedChart data={tempData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                          <ComposedChart data={tempData} margin={{ top: 5, right: 45, bottom: 5, left: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                             <XAxis dataKey="name" tick={{ fontSize: 10, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false}
                               interval={tempRange <= 90 ? "preserveStartEnd" : 0} />
-                            <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit="°C" domain={[0, 90]} axisLine={false} tickLine={false} />
+                            <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit="°C" domain={[0, 100]} axisLine={false} tickLine={false} />
                             <Tooltip content={<TempTooltip />} />
                             <Legend wrapperStyle={{ fontSize: 11, color: brand.subtle }} iconType="circle" iconSize={8} />
                             <ReferenceLine y={HOFOR.standard.krav} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5}
@@ -896,6 +935,9 @@ export default function MeterDetailPage() {
                             <Line type="monotone" dataKey="cooling" stroke={brand.blue} strokeWidth={2}
                               dot={tempRange <= 90 ? { r: 2, fill: brand.blue, strokeWidth: 0 } : false}
                               name={t("coolingLine", lang)} />
+                            {/* HOFOR threshold in legend */}
+                            <Line dataKey="none" stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5}
+                              name={t("hoforStandardLine", lang)} legendType="plainline" dot={false} />
                           </ComposedChart>
                         </ResponsiveContainer>
                       </CardContent>
