@@ -186,6 +186,58 @@ export function getSupplier(supplierId) {
   return suppliers.find(s => s.id === supplierId);
 }
 
+/* ─── Afkøling (cooling) time-series per DH meter ─── */
+/* Generates weekly afkøling data for sparklines and aggregation.
+   Each data point: { week, afkoeling (kWh/m³), mwh, volume (m³), supply, return } */
+export function getAfkoelingTimeSeries(meterId, weeks = 52) {
+  const m = meters.find(x => x.id === meterId);
+  if (!m || m.type !== "fjernvarme") return [];
+  const seed = meterId.charCodeAt(meterId.length - 1) + meterId.charCodeAt(meterId.length - 3) * 7;
+  const r = (n) => Math.sin(seed * 100 + n * 17) * 0.5 + 0.5;
+
+  // Building-specific baseline afkøling — newer buildings cool better
+  const bldg = buildings.find(b => b.id === m.buildingId);
+  const yearBuilt = bldg?.yearBuilt || 1970;
+  const baseAfk = yearBuilt > 2010 ? 26 + r(0) * 4    // Modern: 26-30
+               : yearBuilt > 1990 ? 29 + r(0) * 5     // Mid: 29-34
+               :                     32 + r(0) * 6;    // Old: 32-38
+
+  return Array.from({ length: weeks }, (_, n) => {
+    const winterFactor = n < 13 || n > 39 ? 1 : 0.85; // Summer = better cooling
+    const noise = Math.sin(seed * 7 + n * 31) * 2;
+    const afk = +(baseAfk * winterFactor + noise).toFixed(1);
+    const volume = +(winterFactor * (45 + r(n + 200) * 30)).toFixed(1);
+    const mwh = +((volume * afk) / 860).toFixed(2);
+    const supply = +(75 + r(n) * 8).toFixed(1);
+    const retTemp = +(supply - (afk / 860 * 1000 / (volume > 0 ? 1 : 0.001))).toFixed(1);
+    return { week: n + 1, afkoeling: afk, mwh, volume, supply, return: Math.max(30, Math.min(55, +(supply - afk * 0.35 + noise * 0.5).toFixed(1))) };
+  });
+}
+
+/* Get all DH meters with their current afkøling summary */
+export function getDhMetersSummary() {
+  return meters
+    .filter(m => m.type === "fjernvarme")
+    .map(m => {
+      const series = getAfkoelingTimeSeries(m.id, 52);
+      const recent12 = series.slice(-12);
+      const avgAfk = recent12.length > 0 ? +(recent12.reduce((s, d) => s + d.afkoeling, 0) / recent12.length).toFixed(1) : 0;
+      const bldg = buildings.find(b => b.id === m.buildingId);
+      return {
+        meterId: m.id,
+        buildingId: m.buildingId,
+        buildingName: bldg?.name || m.buildingId,
+        buildingArea: bldg?.area || 0,
+        avgAfkoeling: avgAfk,
+        hasTemperatureData: m.hasTemperatureData,
+        sparkline: recent12.map(d => d.afkoeling),
+        series,
+        status: m.status,
+        supplierId: m.supplierId,
+      };
+    });
+}
+
 /* ─── Billing Cycles ─── */
 export const billingCycles = [
   { id: "2025-2026", label: "2025/2026", start: "2025-07-01", end: "2026-06-30", active: true },

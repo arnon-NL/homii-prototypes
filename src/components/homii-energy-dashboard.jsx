@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 
 import { brand, yearColor, HOFOR, Icon } from "@/lib/brand";
 import { useLang, t, MS, ML } from "@/lib/i18n";
-import { meters as allMeters, buildings, getBuilding } from "@/lib/mockData";
+import { meters as allMeters, buildings, getBuilding, getDhMetersSummary, getAfkoelingTimeSeries } from "@/lib/mockData";
 
 /* ═══════════════════════════════════════════════════════
    Custom SegmentedControl (Notion-style)
@@ -620,149 +620,316 @@ function TariffDash() {
    ═══════════════════════════════════════════════════════ */
 export function CoolingReport({ navigate }) {
   const lang = useLang();
+  const [view, setView] = useState("portfolio"); // "portfolio" | "detail"
+  const [selectedMeter, setSelectedMeter] = useState(null);
   const [period, setPeriod] = useState("monthly");
-  const [meter, setMeter] = useState("all");
   const [compareMeter, setCompareMeter] = useState("none");
-  const data = useMemo(() => mkCooling(period, meter, lang), [period, meter, lang]);
-  const compareData = useMemo(() => compareMeter !== "none" ? mkCooling(period, compareMeter, lang) : null, [period, compareMeter, lang]);
   const thr = AFKOELING_THRESHOLD;
 
-  const avg = (k) => +(data.reduce((s,d)=>s+d[k],0)/data.length).toFixed(1);
-  const avgC = avg("cooling"), avgR = avg("return"), totMWh = +data.reduce((s,d)=>s+d.mwh,0).toFixed(1);
+  // Portfolio data
+  const dhSummary = useMemo(() => getDhMetersSummary(), []);
+  const portfolioAvg = dhSummary.length > 0 ? +(dhSummary.reduce((s, m) => s + m.avgAfkoeling, 0) / dhSummary.length).toFixed(1) : 0;
+  const sorted = useMemo(() => [...dhSummary].sort((a, b) => a.avgAfkoeling - b.avgAfkoeling), [dhSummary]);
+  const inBonus = dhSummary.filter(m => m.avgAfkoeling <= thr).length;
+  const inSurcharge = dhSummary.filter(m => m.avgAfkoeling > thr).length;
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+
+  // Financial impact calculation
+  const totalArea = dhSummary.reduce((s, m) => s + m.buildingArea, 0);
+  const annualMWh = totalArea * 0.12; // Estimated 0.12 MWh/m² for DH
+  const deviation = portfolioAvg - thr;
+  const correction = deviation * HOFOR.korrektionPct * HOFOR.energiprisPerMWh * annualMWh;
+  const isBonus = portfolioAvg <= thr;
+
+  // Detail mode data
+  const detailData = useMemo(() => selectedMeter ? mkCooling(period, selectedMeter, lang) : null, [period, selectedMeter, lang]);
+  const compareData = useMemo(() => compareMeter !== "none" ? mkCooling(period, compareMeter, lang) : null, [period, compareMeter, lang]);
+
+  // Meter list for dropdowns
+  const fjernvarmeMeters = allMeters.filter(m => m.type === "fjernvarme");
+  const meterOptions = [
+    { id: "all", l: t("allMeters", lang) },
+    ...fjernvarmeMeters.map(m => {
+      const bldg = getBuilding(m.buildingId);
+      return { id: m.id, l: `${m.id} — ${bldg?.name || m.buildingId}` };
+    }),
+  ];
+
+  const openDetail = (meterId) => {
+    setSelectedMeter(meterId);
+    setView("detail");
+    setCompareMeter("none");
+  };
+
+  /* ── Mini sparkline (SVG) ── */
+  const Sparkline = ({ data, threshold }) => {
+    if (!data || data.length === 0) return <span className="text-[10px] text-slate-300">—</span>;
+    const w = 80, h = 24, pad = 2;
+    const min = Math.min(...data) - 2, max = Math.max(...data) + 2;
+    const range = max - min || 1;
+    const pts = data.map((v, i) => `${pad + (i / (data.length - 1)) * (w - pad * 2)},${pad + (1 - (v - min) / range) * (h - pad * 2)}`).join(" ");
+    const thrY = pad + (1 - (threshold - min) / range) * (h - pad * 2);
+    return (
+      <svg width={w} height={h} className="inline-block">
+        <line x1={pad} y1={thrY} x2={w - pad} y2={thrY} stroke={brand.red} strokeWidth={0.5} strokeDasharray="2 2" opacity={0.5} />
+        <polyline points={pts} fill="none" stroke={brand.blue} strokeWidth={1.5} />
+      </svg>
+    );
+  };
+
+  /* ── Tariff position badge ── */
+  const TariffBadge = ({ afk }) => {
+    if (afk <= thr) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{afk <= HOFOR.standard.surchargeBelow ? t("bonusZone", lang) : t("bonus", lang)}</span>;
+    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-600"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />{t("surchargeZone", lang)}</span>;
+  };
+
+  /* ════════════════════════════════════════════
+     PORTFOLIO VIEW
+     ════════════════════════════════════════════ */
+  if (view === "portfolio") {
+    return (
+      <div className="space-y-5">
+        {/* Header */}
+        <SectionHeader title={t("coolingTitle", lang)} description={t("portfolioCoolingSub", lang)} />
+
+        {/* Layer 1: Portfolio Summary KPIs */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <Metric
+            label={t("portfolioAvg", lang)}
+            value={portfolioAvg}
+            unit="kWh/m³"
+            sub={isBonus ? `${t("belowThreshold", lang)} (${thr})` : `${t("aboveThreshold", lang)} (${thr})`}
+            status={isBonus ? "good" : "bad"}
+          />
+          <Metric
+            label={t("tariffPosition", lang)}
+            value={isBonus ? t("bonus", lang) : t("surcharge", lang)}
+            sub={isBonus ? t("expectedBonus", lang) : t("riskSurcharge", lang)}
+            status={isBonus ? "good" : "bad"}
+          />
+          <Metric
+            label={t("financialImpact", lang)}
+            value={`${correction > 0 ? "+" : ""}${Math.round(Math.abs(correction)).toLocaleString()}`}
+            unit={`DKK${t("perYear", lang)}`}
+            sub={isBonus ? t("annualSaving", lang) : t("annualCost", lang)}
+            status={isBonus ? "good" : "bad"}
+          />
+          <Metric label={t("metersInBonus", lang)} value={inBonus} unit={`/ ${dhSummary.length}`} status={inBonus === dhSummary.length ? "good" : "warn"} />
+          <Metric label={t("metersInSurcharge", lang)} value={inSurcharge} unit={`/ ${dhSummary.length}`} status={inSurcharge === 0 ? "good" : "bad"} />
+        </div>
+
+        {/* Portfolio afkøling trend — all meters overlaid */}
+        <SectionCard title={t("afkoelingTrendTitle", lang)}>
+          <p className="text-xs text-slate-400 mb-3">{t("afkoelingTrendSub", lang)}</p>
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="week" type="number" domain={[1, 52]} tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false}
+                tickFormatter={w => `W${w}`} />
+              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" kWh/m³" axisLine={false} tickLine={false} />
+              <Tooltip content={<BrandTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 11, color: brand.subtle }} iconType="circle" iconSize={8} />
+              <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5}
+                label={{ value: `${t("supplierThreshold", lang)}: ${thr}`, fill: brand.red, fontSize: 10, position: "right" }} />
+              {dhSummary.map((m, idx) => {
+                const colors = [brand.blue, brand.midBlue, brand.amber, brand.green, "#8B5CF6"];
+                return (
+                  <Line key={m.meterId} data={m.series} type="monotone" dataKey="afkoeling"
+                    stroke={colors[idx % colors.length]} strokeWidth={1.5}
+                    dot={false} name={m.buildingName} />
+                );
+              })}
+            </ComposedChart>
+          </ResponsiveContainer>
+        </SectionCard>
+
+        {/* Layer 2: Meter comparison table */}
+        <SectionCard title={t("meterComparison", lang)} noPad>
+          <div className="px-5 pt-3 pb-2">
+            <p className="text-xs text-slate-400">{t("meterComparisonSub", lang)}</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50/80">
+                  <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-left">{t("meterId", lang)}</th>
+                  <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-left">{t("buildingName", lang)}</th>
+                  <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-right">{t("currentAfkoeling", lang)}</th>
+                  <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-right">{t("deviationFromKrav", lang)}</th>
+                  <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-center">{t("tariffPosition", lang)}</th>
+                  <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-center">{t("trend12w", lang)}</th>
+                  <th className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider px-5 py-2.5 text-right"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {sorted.map(m => {
+                  const dev = +(m.avgAfkoeling - thr).toFixed(1);
+                  return (
+                    <tr key={m.meterId} className="hover:bg-slate-50/80 transition-colors cursor-pointer" onClick={() => openDetail(m.meterId)}>
+                      <td className="px-5 py-3">
+                        <span className="text-sm font-mono font-medium" style={{ color: brand.navy }}>{m.meterId}</span>
+                        {!m.hasTemperatureData && <span className="ml-1.5 text-[9px] text-slate-400 bg-slate-100 px-1 py-0.5 rounded">{t("noTempData", lang)}</span>}
+                      </td>
+                      <td className="px-5 py-3 text-sm text-slate-600">{m.buildingName}</td>
+                      <td className="px-5 py-3 text-right">
+                        <span className={`text-sm font-semibold tabular-nums ${m.avgAfkoeling <= thr ? "text-emerald-600" : m.avgAfkoeling <= thr * 1.1 ? "text-amber-500" : "text-red-500"}`}>
+                          {m.avgAfkoeling}
+                        </span>
+                        <span className="text-xs text-slate-400 ml-1">kWh/m³</span>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <span className={`text-sm tabular-nums font-medium ${dev <= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                          {dev > 0 ? "+" : ""}{dev}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-center"><TariffBadge afk={m.avgAfkoeling} /></td>
+                      <td className="px-5 py-3 text-center"><Sparkline data={m.sparkline} threshold={thr} /></td>
+                      <td className="px-5 py-3 text-right">
+                        <button className="text-[11px] font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors" style={{ color: brand.blue }}>
+                          {t("detailedView", lang)} →
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {/* Portfolio average footer */}
+          <div className="flex items-center justify-between px-5 py-3 bg-slate-50/80 border-t border-slate-200">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("portfolioAvg", lang)}</span>
+            <span className={`text-sm font-bold tabular-nums ${portfolioAvg <= thr ? "text-emerald-600" : "text-red-500"}`}>
+              {portfolioAvg} <span className="text-slate-400 font-normal text-xs">kWh/m³</span>
+            </span>
+          </div>
+        </SectionCard>
+      </div>
+    );
+  }
+
+  /* ════════════════════════════════════════════
+     DETAIL VIEW — single meter deep-dive
+     ════════════════════════════════════════════ */
+  const data = detailData || [];
+  const avg = (k) => data.length > 0 ? +(data.reduce((s, d) => s + d[k], 0) / data.length).toFixed(1) : 0;
+  const avgC = avg("cooling"), avgR = avg("return"), totMWh = +data.reduce((s, d) => s + d.mwh, 0).toFixed(1);
   const avgAfk = avg("afkoeling");
   const afkOk = avgAfk <= thr;
   const ok = avgC >= thr;
 
-  // Use actual fjernvarme meters from mockData
-  const fjernvarmeMeters = allMeters.filter(m => m.type === "fjernvarme");
-  const meters = [
-    { id: "all", l: t("allMeters", lang) },
-    ...fjernvarmeMeters.map(m => {
-      const bldg = getBuilding(m.buildingId);
-      return { id: m.id, l: `${m.id} — ${bldg?.name || m.buildingId}`, meterId: m.id };
-    }),
-  ];
-
   return (
     <div className="space-y-5">
-      <SectionHeader title={t("coolingTitle",lang)} description={t("coolingSub",lang)}>
-        <Select value={meter} onValueChange={setMeter}>
-          <SelectTrigger className="w-[260px] h-8 text-xs"><SelectValue/></SelectTrigger>
-          <SelectContent>{meters.map(m=><SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}</SelectContent>
-        </Select>
-        {meter !== "all" && navigate && (
-          <button
-            onClick={() => navigate(`/meters/${meter}`)}
+      {/* Back + header */}
+      <div className="flex items-center gap-3">
+        <button onClick={() => { setView("portfolio"); setSelectedMeter(null); }}
+          className="text-[11px] font-medium px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors border border-slate-200 flex items-center gap-1"
+          style={{ color: brand.navy }}>
+          ← {t("backToPortfolio", lang)}
+        </button>
+        {navigate && selectedMeter && (
+          <button onClick={() => navigate(`/meters/${selectedMeter}`)}
             className="text-[11px] font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors"
-            style={{ color: brand.blue }}
-          >
+            style={{ color: brand.blue }}>
             {lang === "da" ? "Åbn måler →" : "Open meter →"}
           </button>
         )}
-        <SegmentedControl value={period} onChange={v=>v&&setPeriod(v)} options={[
-          {value:"weekly", label:t("weekly",lang)},
-          {value:"monthly", label:t("monthly",lang)},
-          {value:"yearly", label:t("yearly",lang)},
+      </div>
+
+      <SectionHeader title={t("coolingTitle", lang)} description={t("coolingSub", lang)}>
+        <Select value={selectedMeter || "all"} onValueChange={v => { if (v === "all") { setView("portfolio"); setSelectedMeter(null); } else { setSelectedMeter(v); } }}>
+          <SelectTrigger className="w-[260px] h-8 text-xs"><SelectValue /></SelectTrigger>
+          <SelectContent>{meterOptions.map(m => <SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}</SelectContent>
+        </Select>
+        <SegmentedControl value={period} onChange={v => v && setPeriod(v)} options={[
+          { value: "weekly", label: t("weekly", lang) },
+          { value: "monthly", label: t("monthly", lang) },
+          { value: "yearly", label: t("yearly", lang) },
         ]} />
       </SectionHeader>
 
-      {/* Meter selection grid */}
-      <div className="flex flex-wrap gap-2">
-        {meters.map(m => (
-          <button
-            key={m.id}
-            onClick={() => setMeter(m.id)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-              meter === m.id
-                ? "bg-white shadow-sm border-slate-200 text-slate-900"
-                : "bg-transparent border-transparent text-slate-500 hover:bg-slate-100"
-            }`}
-          >
-            {m.id !== "all" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />}
-            {m.l}
-          </button>
-        ))}
-      </div>
-
+      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <Metric label={t("afkoelingKpi",lang)} value={avgAfk} unit={t("afkoelingUnit",lang)}
-          sub={afkOk ? `${t("belowThreshold",lang)} (${thr})` : `${t("aboveThreshold",lang)} (${thr})`} status={afkOk?"good":"bad"} />
-        <Metric label={t("avgCooling",lang)} value={avgC} unit="°C" sub={ok ? `${t("aboveReq",lang)} (${thr}°C)` : `${t("belowReq",lang)} (${thr}°C)`} status={ok?"good":"bad"} />
-        <Metric label={t("avgReturn",lang)} value={avgR} unit="°C" sub={avgR<40?t("goodReturn",lang):t("canImprove",lang)} status={avgR<40?"good":"warn"} />
-        <Metric label={t("totalCons",lang)} value={totMWh} unit="MWh" />
-        <Metric label={t("status",lang)} value={ok?t("bonus",lang):t("surcharge",lang)} sub={ok?t("expectedBonus",lang):t("riskSurcharge",lang)} status={ok?"good":"bad"} />
+        <Metric label={t("afkoelingKpi", lang)} value={avgAfk} unit={t("afkoelingUnit", lang)}
+          sub={afkOk ? `${t("belowThreshold", lang)} (${thr})` : `${t("aboveThreshold", lang)} (${thr})`} status={afkOk ? "good" : "bad"} />
+        <Metric label={t("avgCooling", lang)} value={avgC} unit="°C" sub={ok ? `${t("aboveReq", lang)} (${thr}°C)` : `${t("belowReq", lang)} (${thr}°C)`} status={ok ? "good" : "bad"} />
+        <Metric label={t("avgReturn", lang)} value={avgR} unit="°C" sub={avgR < 40 ? t("goodReturn", lang) : t("canImprove", lang)} status={avgR < 40 ? "good" : "warn"} />
+        <Metric label={t("totalCons", lang)} value={totMWh} unit="MWh" />
+        <Metric label={t("status", lang)} value={ok ? t("bonus", lang) : t("surcharge", lang)} sub={ok ? t("expectedBonus", lang) : t("riskSurcharge", lang)} status={ok ? "good" : "bad"} />
       </div>
 
-      {/* Afkøling (kWh/m³) Trend */}
-      <SectionCard title={t("afkoelingTrendTitle",lang)}>
-        <p className="text-xs text-slate-400 mb-3">{t("afkoelingTrendSub",lang)}</p>
+      {/* Afkøling trend */}
+      <SectionCard title={t("afkoelingTrendTitle", lang)}>
+        <p className="text-xs text-slate-400 mb-3">{t("afkoelingTrendSub", lang)}</p>
         <div className="flex items-center gap-3 mb-3">
           <Select value={compareMeter} onValueChange={setCompareMeter}>
-            <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue placeholder={t("compareWith",lang)}/></SelectTrigger>
+            <SelectTrigger className="w-[200px] h-8 text-xs"><SelectValue placeholder={t("compareWith", lang)} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">{t("noComparison",lang)}</SelectItem>
-              {meters.filter(m=>m.id!==meter).map(m=><SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}
+              <SelectItem value="none">{t("noComparison", lang)}</SelectItem>
+              {meterOptions.filter(m => m.id !== selectedMeter).map(m => <SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <ResponsiveContainer width="100%" height={280}>
-          <ComposedChart data={data} margin={{top:5,right:20,bottom:5,left:0}}>
+          <ComposedChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-            <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-            <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" kWh/m³" axisLine={false} tickLine={false} />
-            <Tooltip content={<BrandTooltip/>}/>
-            <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" kWh/m³" axisLine={false} tickLine={false} />
+            <Tooltip content={<BrandTooltip />} />
+            <Legend wrapperStyle={{ fontSize: 11, color: brand.subtle }} iconType="circle" iconSize={8} />
             <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5}
-              label={{value:`${t("hoforThreshold",lang)}: ${thr} kWh/m³`,fill:brand.red,fontSize:10,position:"right"}} />
+              label={{ value: `${t("hoforThreshold", lang)}: ${thr} kWh/m³`, fill: brand.red, fontSize: 10, position: "right" }} />
             <Area type="monotone" dataKey="afkoeling" fill={brand.blue} fillOpacity={0.08} stroke="none" legendType="none" />
-            <Line type="monotone" dataKey="afkoeling" stroke={brand.blue} strokeWidth={2} dot={{r:2.5,fill:brand.blue,strokeWidth:0}} name={t("afkoelingLine",lang)} />
+            <Line type="monotone" dataKey="afkoeling" stroke={brand.blue} strokeWidth={2} dot={{ r: 2.5, fill: brand.blue, strokeWidth: 0 }} name={t("afkoelingLine", lang)} />
             {compareData && (
               <Line type="monotone" data={compareData} dataKey="afkoeling" stroke={brand.midBlue} strokeWidth={1.5} strokeDasharray="6 3" dot={false}
-                name={`${t("afkoelingLine",lang)} (${meters.find(m=>m.id===compareMeter)?.l || compareMeter})`} />
+                name={`${t("afkoelingLine", lang)} (${meterOptions.find(m => m.id === compareMeter)?.l || compareMeter})`} />
             )}
           </ComposedChart>
         </ResponsiveContainer>
       </SectionCard>
 
-      {/* Temperature chart (Supply, Return, Cooling °C) */}
-      <SectionCard title={t("chartTitle",lang)}>
+      {/* Temperature chart */}
+      <SectionCard title={t("chartTitle", lang)}>
         <ResponsiveContainer width="100%" height={300}>
-          <ComposedChart data={data} margin={{top:5,right:20,bottom:5,left:0}}>
+          <ComposedChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-            <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-            <YAxis tick={{fontSize:11, fill:brand.muted}} unit="°C" domain={[0, 90]} axisLine={false} tickLine={false} />
-            <Tooltip content={<BrandTooltip/>}/>
-            <Legend wrapperStyle={{fontSize:11, color:brand.subtle}} iconType="circle" iconSize={8} />
-            <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{value:`${t("req",lang)}: ${thr}°C`,fill:brand.red,fontSize:10,position:"right"}}/>
-            <Line type="monotone" dataKey="supply" stroke={brand.red} strokeWidth={1.5} dot={false} name={t("supplyLine",lang)}/>
-            <Line type="monotone" dataKey="return" stroke={brand.amber} strokeWidth={1.5} dot={false} name={t("returnLine",lang)}/>
-            <Line type="monotone" dataKey="cooling" stroke={brand.blue} strokeWidth={2} dot={{r:2.5,fill:brand.blue,strokeWidth:0}} name={t("coolingLine",lang)}/>
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit="°C" domain={[0, 90]} axisLine={false} tickLine={false} />
+            <Tooltip content={<BrandTooltip />} />
+            <Legend wrapperStyle={{ fontSize: 11, color: brand.subtle }} iconType="circle" iconSize={8} />
+            <ReferenceLine y={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5} label={{ value: `${t("req", lang)}: ${thr}°C`, fill: brand.red, fontSize: 10, position: "right" }} />
+            <Line type="monotone" dataKey="supply" stroke={brand.red} strokeWidth={1.5} dot={false} name={t("supplyLine", lang)} />
+            <Line type="monotone" dataKey="return" stroke={brand.amber} strokeWidth={1.5} dot={false} name={t("returnLine", lang)} />
+            <Line type="monotone" dataKey="cooling" stroke={brand.blue} strokeWidth={2} dot={{ r: 2.5, fill: brand.blue, strokeWidth: 0 }} name={t("coolingLine", lang)} />
           </ComposedChart>
         </ResponsiveContainer>
       </SectionCard>
 
-      <SectionCard title={t("energyCons",lang)}>
+      {/* Energy consumption bar chart */}
+      <SectionCard title={t("energyCons", lang)}>
         <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={data} margin={{top:5,right:20,bottom:5,left:0}}>
+          <BarChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-            <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-            <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false} />
-            <Tooltip content={<BrandTooltip/>}/>
-            <Bar dataKey="mwh" name={t("consBar",lang)} radius={[3,3,0,0]} fill={brand.blue} fillOpacity={0.8} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" MWh" axisLine={false} tickLine={false} />
+            <Tooltip content={<BrandTooltip />} />
+            <Bar dataKey="mwh" name={t("consBar", lang)} radius={[3, 3, 0, 0]} fill={brand.blue} fillOpacity={0.8} />
           </BarChart>
         </ResponsiveContainer>
       </SectionCard>
 
-      <SectionCard title={t("coolingTable",lang)} noPad>
+      {/* Data table */}
+      <SectionCard title={t("coolingTable", lang)} noPad>
         <DataTable
-          headers={[t("period",lang), t("supply",lang), t("returnT",lang), t("coolingC",lang), t("afkoelingCol",lang), t("volume",lang), t("consCol",lang)]}
-          rows={data.map((r,idx) => (
+          headers={[t("period", lang), t("supply", lang), t("returnT", lang), t("coolingC", lang), t("afkoelingCol", lang), t("volume", lang), t("consCol", lang)]}
+          rows={data.map((r, idx) => (
             <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-              <td className="px-4 py-2 text-sm font-medium" style={{color: brand.navy}}>{r.name}</td>
+              <td className="px-4 py-2 text-sm font-medium" style={{ color: brand.navy }}>{r.name}</td>
               <td className="px-4 py-2 text-sm text-right tabular-nums">{r.supply}</td>
               <td className={`px-4 py-2 text-sm text-right tabular-nums ${r.return > 42 ? "text-red-500" : ""}`}>{r.return}</td>
               <td className="px-4 py-2 text-sm text-right tabular-nums">{r.cooling}</td>
-              <td className={`px-4 py-2 text-sm text-right tabular-nums font-medium ${r.afkoeling <= thr ? "text-emerald-600" : r.afkoeling <= thr*1.1 ? "text-amber-500" : "text-red-500"}`}>{r.afkoeling}</td>
+              <td className={`px-4 py-2 text-sm text-right tabular-nums font-medium ${r.afkoeling <= thr ? "text-emerald-600" : r.afkoeling <= thr * 1.1 ? "text-amber-500" : "text-red-500"}`}>{r.afkoeling}</td>
               <td className="px-4 py-2 text-sm text-right tabular-nums">{r.volume}</td>
               <td className="px-4 py-2 text-sm text-right tabular-nums">{r.mwh}</td>
             </tr>
