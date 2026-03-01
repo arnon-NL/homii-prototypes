@@ -11,7 +11,7 @@ export default function BuildingListPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="px-8 py-6">
+      <div className="max-w-[1200px] mx-auto px-6 py-6">
         {/* Attio-style header: title + count inline */}
         <div className="flex items-baseline gap-2.5 mb-5">
           <h1 className="text-xl font-semibold" style={{ color: brand.navy }}>{t("buildings", lang)}</h1>

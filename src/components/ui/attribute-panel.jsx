@@ -16,7 +16,7 @@ import { brand } from "@/lib/brand";
 
 export function AttributePanel({ children }) {
   return (
-    <div className="w-[280px] shrink-0 border-l border-slate-200 bg-slate-50/50 overflow-y-auto">
+    <div className="w-full xl:w-[280px] shrink-0 xl:border-l border-t xl:border-t-0 border-slate-200 bg-slate-50/50 overflow-y-auto mt-6 xl:mt-0 pt-6 xl:pt-0">
       <div className="px-4 py-4 space-y-5">
         {children}
       </div>

@@ -57,7 +57,7 @@ export default function SupplierDetailPage() {
         </div>
 
         {/* Content: tabs + attribute panel */}
-        <div className="flex gap-6">
+        <div className="flex flex-col xl:flex-row gap-6">
           <div className="flex-1 min-w-0">
             <Tabs defaultValue="overview">
               <TabsList className="bg-transparent h-10 gap-0 p-0 border-b border-slate-200 w-full justify-start rounded-none">

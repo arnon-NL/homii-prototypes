@@ -58,7 +58,7 @@ export default function ReportsPage() {
 
     return (
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[1200px] mx-auto px-8 py-6">
+        <div className="max-w-[1200px] mx-auto px-6 py-6">
           <Breadcrumbs items={crumbs} />
           <div className="mb-6">
             <button
@@ -97,7 +97,7 @@ export default function ReportsPage() {
   // Report index view — portfolio-level
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="px-8 py-6">
+      <div className="max-w-[1200px] mx-auto px-6 py-6">
         <div className="flex items-center gap-3 mb-5">
           <h1 className="text-xl font-semibold" style={{ color: brand.navy }}>{t("reports", lang)}</h1>
           <span className="text-sm text-slate-400">{reports.length}</span>
