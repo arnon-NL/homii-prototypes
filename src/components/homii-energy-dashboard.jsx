@@ -65,6 +65,14 @@ function mkBar(lang) {
 }
 
 /* ═══════════════════════════════════════════════════════
+   Locale-aware number formatting (da-DK: . for thousands, , for decimal)
+   ═══════════════════════════════════════════════════════ */
+const fmtNum = (v, decimals = 0) => {
+  if (v == null || isNaN(v)) return "–";
+  return v.toLocaleString("da-DK", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+};
+
+/* ═══════════════════════════════════════════════════════
    Shared components
    ═══════════════════════════════════════════════════════ */
 const BrandTooltip = ({active, payload, label}) => {
@@ -76,7 +84,7 @@ const BrandTooltip = ({active, payload, label}) => {
         <div key={idx} className="flex items-center gap-2 py-0.5" style={{color: brand.text}}>
           <span className="w-2 h-2 rounded-full shrink-0" style={{background: p.color}}/>
           <span className="text-slate-500">{p.name}:</span>
-          <span className="font-semibold ml-auto tabular-nums">{typeof p.value === "number" ? p.value.toFixed(1) : p.value}</span>
+          <span className="font-semibold ml-auto tabular-nums">{typeof p.value === "number" ? fmtNum(p.value, 1) : p.value}</span>
         </div>
       ))}
     </div>
@@ -304,12 +312,12 @@ function ConsumptionDash() {
         </SectionHeader>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <Metric label={t("afkoelingKpi",lang)} value={avgAfkoeling} unit={t("afkoelingUnit",lang)}
+          <Metric label={t("afkoelingKpi",lang)} value={fmtNum(avgAfkoeling, 1)} unit={t("afkoelingUnit",lang)}
             sub={afkOk ? `${t("belowThreshold",lang)} (${thr})` : `${t("aboveThreshold",lang)} (${thr})`} status={afkOk?"good":"bad"} />
-          <Metric label={t("avgCooling",lang)} value={(coolData.reduce((s,d)=>s+d.cooling,0)/coolData.length).toFixed(1)} unit="°C"
+          <Metric label={t("avgCooling",lang)} value={fmtNum(coolData.reduce((s,d)=>s+d.cooling,0)/coolData.length, 1)} unit="°C"
             sub={lang==="da"?"Fremløb − retur":"Supply − return"} />
-          <Metric label={t("totalCons",lang)} value={coolData.reduce((s,d)=>s+d.mwh,0).toFixed(1)} unit="MWh" />
-          <Metric label={t("volume",lang)} value={coolData.reduce((s,d)=>s+d.volume,0).toFixed(0)} unit="m³" />
+          <Metric label={t("totalCons",lang)} value={fmtNum(coolData.reduce((s,d)=>s+d.mwh,0), 1)} unit="MWh" />
+          <Metric label={t("volume",lang)} value={fmtNum(coolData.reduce((s,d)=>s+d.volume,0))} unit="m³" />
         </div>
 
         <SectionCard title={null}>
@@ -387,12 +395,12 @@ function ConsumptionDash() {
                 {barData.map((r,idx) => (
                   <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-4 py-2 text-sm font-medium" style={{color: brand.navy}}>{r.name}</td>
-                    {vis.map(y=><td key={y} className="px-4 py-2 text-sm text-right tabular-nums">{r[`h${y}`]?.toFixed(1)}</td>)}
+                    {vis.map(y=><td key={y} className="px-4 py-2 text-sm text-right tabular-nums">{fmtNum(r[`h${y}`], 1)}</td>)}
                   </tr>
                 ))}
                 <tr className="bg-slate-50 border-t border-slate-200 font-semibold">
                   <td className="px-4 py-2.5 text-sm" style={{color: brand.navy}}>{t("total",lang)}</td>
-                  {vis.map(y=><td key={y} className="px-4 py-2.5 text-sm text-right tabular-nums" style={{color: brand.navy}}>{barData.reduce((s,r)=>s+(r[`h${y}`]||0),0).toFixed(1)}</td>)}
+                  {vis.map(y=><td key={y} className="px-4 py-2.5 text-sm text-right tabular-nums" style={{color: brand.navy}}>{fmtNum(barData.reduce((s,r)=>s+(r[`h${y}`]||0),0), 1)}</td>)}
                 </tr>
               </>
             }
@@ -467,8 +475,8 @@ function TariffDash() {
             <div className="space-y-2.5">
               {[
                 { label: `${t("effektbetaling",lang)} (8.500 m²)`, val: fmtDKK(effektCost) },
-                { label: `${t("energipris",lang)} (${estimatedMWh.toFixed(0)} MWh × ${HOFOR.energiprisPerMWh} DKK)`, val: fmtDKK(energiCost) },
-                { label: `${t("afkKorrektion",lang)} (${beyondNeutral > 0 ? "+" : ""}${beyondNeutral.toFixed(1)}° × 0,8%)`, val: `${korrektion > 0 ? "−" : korrektion < 0 ? "+" : ""}${fmtDKK(Math.abs(korrektion))}`, color: korrektion > 0 ? brand.green : korrektion < 0 ? brand.red : null },
+                { label: `${t("energipris",lang)} (${fmtNum(estimatedMWh)} MWh × ${HOFOR.energiprisPerMWh} DKK)`, val: fmtDKK(energiCost) },
+                { label: `${t("afkKorrektion",lang)} (${beyondNeutral > 0 ? "+" : ""}${fmtNum(beyondNeutral, 1)}° × 0,8%)`, val: `${korrektion > 0 ? "−" : korrektion < 0 ? "+" : ""}${fmtDKK(Math.abs(korrektion))}`, color: korrektion > 0 ? brand.green : korrektion < 0 ? brand.red : null },
               ].map((row, i) => (
                 <div key={i} className="flex justify-between items-center text-sm">
                   <span className="text-slate-400">{row.label}</span>
@@ -495,8 +503,8 @@ function TariffDash() {
                 }}
               />
               <div className="flex justify-between text-[11px] text-slate-400">
-                <span>{t("currentCooling",lang)}: {avgC.toFixed(1)}°C</span>
-                <span>{t("improvedCooling",lang)}: {(avgC + improveDeg).toFixed(1)}°C</span>
+                <span>{t("currentCooling",lang)}: {fmtNum(avgC, 1)}°C</span>
+                <span>{t("improvedCooling",lang)}: {fmtNum(avgC + improveDeg, 1)}°C</span>
               </div>
               {improveDeg > 0 && (
                 <div className="rounded-lg p-3 text-center bg-emerald-50 border border-emerald-100">
@@ -654,7 +662,7 @@ export function CoolingReport({ navigate }) {
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <Metric label={t("portfolioAvg", lang)} value={portfolioAvg} unit="kWh/m³"
+          <Metric label={t("portfolioAvg", lang)} value={fmtNum(portfolioAvg, 1)} unit="kWh/m³"
             sub={isBonus ? `${t("belowThreshold", lang)} (${thr})` : `${t("aboveThreshold", lang)} (${thr})`}
             status={isBonus ? "good" : "bad"} />
           <Metric label={t("tariffPosition", lang)}
@@ -662,7 +670,7 @@ export function CoolingReport({ navigate }) {
             sub={isBonus ? t("expectedBonus", lang) : t("riskSurcharge", lang)}
             status={isBonus ? "good" : "bad"} />
           <Metric label={t("financialImpact", lang)}
-            value={`${correction > 0 ? "+" : ""}${Math.round(Math.abs(correction)).toLocaleString()}`}
+            value={`${correction > 0 ? "+" : ""}${fmtNum(Math.round(Math.abs(correction)))}`}
             unit={`DKK${t("perYear", lang)}`}
             sub={isBonus ? t("annualSaving", lang) : t("annualCost", lang)}
             status={isBonus ? "good" : "bad"} />
@@ -703,7 +711,7 @@ export function CoolingReport({ navigate }) {
                 >
                   <span className={`w-2 h-2 rounded-full border ${active ? "bg-white border-white/50" : "border-slate-300"}`} />
                   {m.buildingName}
-                  <span className={`text-[10px] tabular-nums ${active ? "text-white/70" : "text-slate-300"}`}>{m.avgAfkoeling}</span>
+                  <span className={`text-[10px] tabular-nums ${active ? "text-white/70" : "text-slate-300"}`}>{fmtNum(m.avgAfkoeling, 1)}</span>
                 </button>
               );
             })}
@@ -807,7 +815,7 @@ export function CoolingReport({ navigate }) {
                       <td className="px-5 py-2.5 text-right">
                         {hasTemp ? (<>
                           <span className={`text-sm font-semibold tabular-nums ${m.avgAfkoeling <= thr ? "text-emerald-600" : m.avgAfkoeling <= thr * 1.1 ? "text-amber-500" : "text-red-500"}`}>
-                            {m.avgAfkoeling}
+                            {fmtNum(m.avgAfkoeling, 1)}
                           </span>
                           <span className="text-xs text-slate-400 ml-1">kWh/m³</span>
                         </>) : <span className="text-xs text-slate-300">—</span>}
@@ -815,7 +823,7 @@ export function CoolingReport({ navigate }) {
                       <td className="px-5 py-2.5 text-right">
                         {hasTemp ? (
                           <span className={`text-sm tabular-nums font-medium ${dev <= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                            {dev > 0 ? "+" : ""}{dev}
+                            {dev > 0 ? "+" : ""}{fmtNum(dev, 1)}
                           </span>
                         ) : <span className="text-xs text-slate-300">—</span>}
                       </td>
@@ -898,7 +906,7 @@ export function CoolingReport({ navigate }) {
 
       {/* Single KPI row: just afkøling + tariff status */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        <Metric label={t("afkoelingKpi", lang)} value={avgAfk} unit={t("afkoelingUnit", lang)}
+        <Metric label={t("afkoelingKpi", lang)} value={fmtNum(avgAfk, 1)} unit={t("afkoelingUnit", lang)}
           sub={afkOk ? `${t("belowThreshold", lang)} (${thr})` : `${t("aboveThreshold", lang)} (${thr})`} status={afkOk ? "good" : "bad"} />
         <Metric label={t("tariffPosition", lang)}
           value={afkOk ? t("bonus", lang) : t("surcharge", lang)}
@@ -1067,9 +1075,9 @@ export function GraddageReport({ navigate }) {
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Metric label={`${t("gafAdj", lang)} 2026`} value={currentYear.gaf.toLocaleString(lang === "da" ? "da-DK" : "en-US")} unit="MWh" sub={`${t("rawCons", lang)}: ${currentYear.raw.toLocaleString(lang === "da" ? "da-DK" : "en-US")} MWh`} />
-        <Metric label={t("degreeDays", lang) + " 2026"} value={currentYear.dd.toLocaleString(lang === "da" ? "da-DK" : "en-US")} sub={`${t("normalYear", lang)}: ${GNT.toLocaleString(lang === "da" ? "da-DK" : "en-US")}`} />
-        <Metric label="GUF 2026" value={currentYear.guf.toFixed(3)} sub={currentYear.guf > 1 ? `${t("colderThanNormal", lang)}` : `${t("warmerThanNormal", lang)}`} />
+        <Metric label={`${t("gafAdj", lang)} 2026`} value={fmtNum(currentYear.gaf)} unit="MWh" sub={`${t("rawCons", lang)}: ${fmtNum(currentYear.raw)} MWh`} />
+        <Metric label={t("degreeDays", lang) + " 2026"} value={fmtNum(currentYear.dd)} sub={`${t("normalYear", lang)}: ${fmtNum(GNT)}`} />
+        <Metric label="GUF 2026" value={fmtNum(currentYear.guf, 3)} sub={currentYear.guf > 1 ? `${t("colderThanNormal", lang)}` : `${t("warmerThanNormal", lang)}`} />
         <Metric label={t("dhMetersCount", lang)} value={`${filtered.length}`} sub={`${visibleSet.size} ${t("selected", lang)}`} />
       </div>
 
@@ -1209,9 +1217,9 @@ export function GraddageReport({ navigate }) {
                   <td className="px-4 py-2 text-sm text-slate-500">{m.buildingName}</td>
                   {m.yearly.map(yd => (
                     <Fragment key={yd.year}>
-                      <td className="px-4 py-2 text-sm text-right tabular-nums">{yd.raw.toLocaleString(lang === "da" ? "da-DK" : "en-US")}</td>
-                      <td className="px-4 py-2 text-sm text-right tabular-nums font-medium" style={{ color: brand.blue }}>{yd.gaf.toLocaleString(lang === "da" ? "da-DK" : "en-US")}</td>
-                      <td className="px-4 py-2 text-sm text-right tabular-nums">{yd.guf}</td>
+                      <td className="px-4 py-2 text-sm text-right tabular-nums">{fmtNum(yd.raw)}</td>
+                      <td className="px-4 py-2 text-sm text-right tabular-nums font-medium" style={{ color: brand.blue }}>{fmtNum(yd.gaf)}</td>
+                      <td className="px-4 py-2 text-sm text-right tabular-nums">{fmtNum(yd.guf, 3)}</td>
                     </Fragment>
                   ))}
                 </tr>
