@@ -372,6 +372,25 @@ export const dict = {
                                  en: "Offline meters and low data quality are automatically identified from integration status. Stale data (>7 days) and error states are flagged to ensure reliable insights." },
   methodDisclaimer:            { da: "Alle beregninger er baseret på simulerede data og branchestandarder. Faktiske besparelser afhænger af bygningsspecifikke forhold.",
                                  en: "All calculations are based on simulated data and industry benchmarks. Actual savings depend on building-specific conditions." },
+
+  // ── Active configuration (derived values) ──
+  activeConfig:                { da: "Aktiv konfiguration",              en: "Active Configuration" },
+  activeConfigSub:             { da: "Parametre afledt automatisk fra bygnings- og leverandørdata",
+                                 en: "Parameters derived automatically from building and supplier data" },
+  configTariffZone:            { da: "Tarifzone",                        en: "Tariff Zone" },
+  configTariffZoneStandard:    { da: "Standard (krav 30°C)",             en: "Standard (threshold 30°C)" },
+  configTariffZoneVesterbro:   { da: "Vesterbro lavtemp. (krav 25°C)",   en: "Vesterbro low-temp. (threshold 25°C)" },
+  configTariffZoneMixed:       { da: "Blandet — varierer pr. bygning",   en: "Mixed — varies per building" },
+  configEnergyPrice:           { da: "Energipris",                       en: "Energy Price" },
+  configEpcTarget:             { da: "EPC-målsætning",                   en: "EPC Target" },
+  configEpcTargetVal:          { da: "B inden 2030 (lovkrav, almene boliger)", en: "B by 2030 (regulatory, social housing)" },
+  configNormalYear:            { da: "Normalårsreference",               en: "Normal-Year Reference" },
+  configNormalYearVal:         { da: "DMI Region Hovedstaden",           en: "DMI Region Capital" },
+  configDerivedFrom:           { da: "Afledt fra",                       en: "Derived from" },
+  configSupplierContract:      { da: "Leverandørkontrakt",               en: "Supplier contract" },
+  configRegulation:            { da: "BEK 1383 regulering",              en: "BEK 1383 regulation" },
+  configBuildingAddress:       { da: "Bygningsadresse",                  en: "Building address" },
+  configBuildingCount:         { da: "bygninger",                        en: "buildings" },
   tooltipSavings:              { da: "Samlet årligt besparelsespotentiale på tværs af alle anbefalinger. Klik 'Beregningsmetode' for detaljer.", en: "Total annual savings potential across all recommendations. Click 'Calculation Method' for details." },
 
   // ── Tooltips ──

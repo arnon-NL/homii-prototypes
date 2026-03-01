@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { brand, EPC_COLORS } from "@/lib/brand";
+import { brand, EPC_COLORS, HOFOR } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
 import { buildings, meters, getMetersForBuilding } from "@/lib/mockData";
 import {
@@ -12,7 +12,7 @@ import {
 import {
   Building2, Gauge, TrendingDown, AlertTriangle, ArrowRight,
   Zap, Thermometer, Award, Activity, Sparkles, ChevronDown,
-  ChevronUp, ExternalLink, BookOpen,
+  ChevronUp, ExternalLink, BookOpen, MapPin, FileText, Scale, Link2,
 } from "lucide-react";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 
@@ -141,13 +141,84 @@ function CategoryFilter({ category, count, active, onClick, lang }) {
 
 /* ═══════════════════════════════════════════════════════
    Savings Methodology Panel — expandable documentation
+   with derived configuration values + source attribution
    ═══════════════════════════════════════════════════════ */
 function MethodologyPanel({ lang }) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+
   const methods = [
     { titleKey: "methodTariffTitle", descKey: "methodTariffDesc", icon: Thermometer, color: "#EF4444", sourceTag: "Kamstrup READy + HOFOR" },
     { titleKey: "methodEpcTitle", descKey: "methodEpcDesc", icon: Award, color: "#F59E0B", sourceTag: "EMO / Energistyrelsen" },
     { titleKey: "methodDataQualityTitle", descKey: "methodDataQualityDesc", icon: Activity, color: "#3B82F6", sourceTag: "Data integration health" },
+  ];
+
+  /* Derive tariff zone summary from building data */
+  const zoneSummary = useMemo(() => {
+    const zones = buildings.map(b => b.hoforZone || "standard");
+    const unique = [...new Set(zones)];
+    if (unique.length === 1) {
+      return {
+        key: unique[0] === "vesterbro" ? "configTariffZoneVesterbro" : "configTariffZoneStandard",
+        mixed: false,
+        counts: null,
+      };
+    }
+    const stdCount = zones.filter(z => z === "standard").length;
+    const vestCount = zones.filter(z => z === "vesterbro").length;
+    return {
+      key: "configTariffZoneMixed",
+      mixed: true,
+      counts: { standard: stdCount, vesterbro: vestCount },
+    };
+  }, []);
+
+  /* Active config parameters — derived, not user-set */
+  const configItems = [
+    {
+      icon: Thermometer,
+      color: "#EF4444",
+      label: t("configTariffZone", lang),
+      value: zoneSummary.mixed
+        ? `${t("configTariffZoneMixed", lang)}`
+        : t(zoneSummary.key, lang),
+      detail: zoneSummary.mixed
+        ? `${zoneSummary.counts.standard} × Standard, ${zoneSummary.counts.vesterbro} × Vesterbro`
+        : null,
+      source: t("configSupplierContract", lang),
+      sourceIcon: FileText,
+      link: "/suppliers/hofor",
+    },
+    {
+      icon: Zap,
+      color: "#EF4444",
+      label: t("configEnergyPrice", lang),
+      value: `${HOFOR.energiprisPerMWh} DKK/MWh`,
+      detail: `${HOFOR.tariffVersion} · ${lang === "da" ? "gyldig fra" : "effective"} ${HOFOR.tariffEffective}`,
+      source: t("configSupplierContract", lang),
+      sourceIcon: FileText,
+      link: "/suppliers/hofor",
+    },
+    {
+      icon: Award,
+      color: "#F59E0B",
+      label: t("configEpcTarget", lang),
+      value: t("configEpcTargetVal", lang),
+      detail: null,
+      source: t("configRegulation", lang),
+      sourceIcon: Scale,
+      link: null,
+    },
+    {
+      icon: MapPin,
+      color: "#3B82F6",
+      label: t("configNormalYear", lang),
+      value: t("configNormalYearVal", lang),
+      detail: `GNT = ${Object.values({Jan:480,Feb:410,Mar:340,Apr:210,Maj:100,Jun:30,Jul:8,Aug:15,Sep:80,Okt:230,Nov:360,Dec:460}).reduce((a,b)=>a+b,0)} ${lang === "da" ? "graddage" : "degree days"}`,
+      source: t("configBuildingAddress", lang),
+      sourceIcon: Building2,
+      link: "/buildings",
+    },
   ];
 
   return (
@@ -161,27 +232,75 @@ function MethodologyPanel({ lang }) {
         {open ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
       </button>
       {open && (
-        <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4 space-y-3">
-          <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">{t("savingsMethodologySub", lang)}</p>
-          {methods.map(m => {
-            const MIcon = m.icon;
-            return (
-              <div key={m.titleKey} className="flex items-start gap-2.5">
-                <div className="w-6 h-6 rounded flex items-center justify-center shrink-0 mt-0.5" style={{ background: m.color + "12" }}>
-                  <MIcon size={12} style={{ color: m.color }} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-[12px] font-semibold" style={{ color: brand.navy }}>{t(m.titleKey, lang)}</p>
-                    {m.sourceTag && (
-                      <span className="text-[9px] bg-slate-100 text-slate-400 rounded px-1.5 py-0.5 font-medium shrink-0">{m.sourceTag}</span>
-                    )}
+        <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4 space-y-4">
+
+          {/* ── Section 1: Active Configuration ── */}
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-2.5">{t("activeConfig", lang)}</p>
+            <div className="space-y-2">
+              {configItems.map((c, i) => {
+                const CIcon = c.icon;
+                const SIcon = c.sourceIcon;
+                return (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <div className="w-5 h-5 rounded flex items-center justify-center shrink-0 mt-0.5" style={{ background: c.color + "12" }}>
+                      <CIcon size={11} style={{ color: c.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-1.5 flex-wrap">
+                        <span className="text-[11px] text-slate-400">{c.label}</span>
+                        <span className="text-[12px] font-semibold" style={{ color: brand.navy }}>{c.value}</span>
+                      </div>
+                      {c.detail && (
+                        <p className="text-[10px] text-slate-400 mt-0.5">{c.detail}</p>
+                      )}
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <SIcon size={9} className="text-slate-300 shrink-0" />
+                        <span className="text-[9px] text-slate-400">{t("configDerivedFrom", lang)}: {c.source}</span>
+                        {c.link && (
+                          <button
+                            onClick={() => navigate(c.link)}
+                            className="text-[9px] font-medium hover:underline flex items-center gap-0.5 ml-0.5"
+                            style={{ color: brand.blue }}
+                          >
+                            <Link2 size={8} />
+                            {lang === "da" ? "vis" : "view"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500 leading-relaxed">{t(m.descKey, lang)}</p>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="h-px bg-slate-100" />
+
+          {/* ── Section 2: Calculation Methods (existing) ── */}
+          <div>
+            <p className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mb-2.5">{t("savingsMethodologySub", lang)}</p>
+            {methods.map(m => {
+              const MIcon = m.icon;
+              return (
+                <div key={m.titleKey} className="flex items-start gap-2.5 mb-2.5">
+                  <div className="w-6 h-6 rounded flex items-center justify-center shrink-0 mt-0.5" style={{ background: m.color + "12" }}>
+                    <MIcon size={12} style={{ color: m.color }} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[12px] font-semibold" style={{ color: brand.navy }}>{t(m.titleKey, lang)}</p>
+                      {m.sourceTag && (
+                        <span className="text-[9px] bg-slate-100 text-slate-400 rounded px-1.5 py-0.5 font-medium shrink-0">{m.sourceTag}</span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">{t(m.descKey, lang)}</p>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
           <p className="text-[10px] text-slate-400 italic border-t border-slate-100 pt-2">{t("methodDisclaimer", lang)}</p>
         </div>
       )}
