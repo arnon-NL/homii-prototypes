@@ -13,6 +13,12 @@ import { AttributePanel, AttrSection, AttrRow, AttrLink } from "@/components/ui/
 import { InfoTooltip, TimePeriodLabel } from "@/components/ui/info-tooltip";
 import Breadcrumbs from "./Breadcrumbs";
 
+/* ── Locale-aware number formatting (da-DK) ── */
+const fmtNum = (v, decimals = 0) => {
+  if (v == null || isNaN(v)) return "–";
+  return v.toLocaleString("da-DK", { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+};
+
 const typeIcons = { fjernvarme: Flame, vand: Droplets, el: Zap };
 const typeColors = { fjernvarme: "#EF4444", vand: "#3B82F6", el: "#F59E0B" };
 
@@ -145,7 +151,7 @@ const BrandTooltip = ({ active, payload, label }) => {
         <div key={idx} className="flex items-center gap-2 py-0.5" style={{ color: brand.text }}>
           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
           <span className="text-slate-500">{p.name}:</span>
-          <span className="font-semibold ml-auto tabular-nums">{typeof p.value === "number" ? p.value.toFixed(1) : p.value}</span>
+          <span className="font-semibold ml-auto tabular-nums">{typeof p.value === "number" ? fmtNum(p.value, 1) : p.value}</span>
         </div>
       ))}
     </div>
@@ -163,7 +169,7 @@ const TempTooltip = ({ active, payload, label }) => {
         <div key={idx} className="flex items-center gap-2 py-0.5" style={{ color: brand.text }}>
           <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color }} />
           <span className="text-slate-500">{p.name}:</span>
-          <span className="font-semibold ml-auto tabular-nums">{typeof p.value === "number" ? p.value.toFixed(1) : p.value}</span>
+          <span className="font-semibold ml-auto tabular-nums">{typeof p.value === "number" ? fmtNum(p.value, 1) : p.value}</span>
         </div>
       ))}
     </div>
@@ -226,8 +232,9 @@ function GafBenchmark({ meter, lang }) {
     }).filter(Boolean);
   }, [graddage, hasData]);
 
-  // Current year info
-  const currentYearData = yearlyTotals.find(y => y.name === "2026");
+  // Dynamic year info — show latest selected year
+  const latestVisYear = gafVis.length > 0 ? Math.max(...gafVis) : null;
+  const displayYearData = latestVisYear ? yearlyTotals.find(y => y.name === `${latestVisYear}`) : null;
 
   if (!hasData) return null;
 
@@ -256,13 +263,14 @@ function GafBenchmark({ meter, lang }) {
           </div>
         </div>
 
-        {/* GUF info row */}
-        {currentYearData && (
+        {/* GUF info row — adapts to latest selected year */}
+        {displayYearData && (
           <div className="flex items-center gap-4 px-3 py-2 bg-slate-50 rounded-lg text-[11px] text-slate-500">
-            <span>GUF 2026: <strong className="text-slate-700">{currentYearData.guf}</strong></span>
+            <span>GUF {latestVisYear}: <strong className="text-slate-700">{fmtNum(displayYearData.guf, 3)}</strong></span>
             <span className="w-px h-3 bg-slate-200" />
-            <span>{t("degreeDays", lang)} 2026: <strong className="text-slate-700">{currentYearData.ag.toLocaleString()}</strong></span>
-            <span className="text-slate-300">({t("normalYear", lang)}: {GNT.toLocaleString()})</span>
+            <span>{t("degreeDays", lang)} {latestVisYear}: <strong className="text-slate-700">{fmtNum(displayYearData.ag)}</strong></span>
+            <span className="text-slate-300">({t("normalYear", lang)}: {fmtNum(GNT)})</span>
+            {gafVis.length > 1 && <span className="text-slate-300 italic ml-auto">{lang === "da" ? `Viser seneste valgte år (${latestVisYear})` : `Showing latest selected year (${latestVisYear})`}</span>}
           </div>
         )}
 
