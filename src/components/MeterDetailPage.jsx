@@ -332,6 +332,8 @@ export default function MeterDetailPage() {
   /* ── Zoom & range state ── */
   const [chartZoom, setChartZoom] = useState({ level: "year" });
   const [tempRange, setTempRange] = useState(30);
+  const [showGaf, setShowGaf] = useState(false);
+  const [showDegreeDays, setShowDegreeDays] = useState(false);
 
   if (!meter) return <div className="p-6 text-slate-400">Meter not found</div>;
 
@@ -347,9 +349,42 @@ export default function MeterDetailPage() {
   const tempData = useMemo(() => (meter.type === "fjernvarme" && meter.hasTemperatureData) ? generateTempData(meter, tempRange) : null, [meter, tempRange]);
   const showTempUnavailable = meter.type === "fjernvarme" && !meter.hasTemperatureData;
 
-  /* Drill-down chart data */
+  /* ── GAF data for DH meters — used for overlay on consumption trend ── */
+  const isDH = meter.type === "fjernvarme";
+  const graddage = useMemo(() => isDH ? getGraddageForMeter(meter.id) : { data: [] }, [meter.id, isDH]);
+  const currentYearGaf = useMemo(() => {
+    if (!isDH || !graddage.data.length) return null;
+    const rows2026 = graddage.data.filter(d => d.year === 2026);
+    if (rows2026.length === 0) return null;
+    const totalRaw = rows2026.reduce((s, d) => s + d.raw, 0);
+    const totalGaf = rows2026.reduce((s, d) => s + d.gaf, 0);
+    const totalDd = rows2026.reduce((s, d) => s + d.degreeDays, 0);
+    const guf = totalDd > 0 ? +(GNT / totalDd).toFixed(3) : 1;
+    return { raw: +totalRaw.toFixed(0), gaf: +totalGaf.toFixed(0), dd: totalDd, guf };
+  }, [graddage, isDH]);
+
+  // Monthly data with GAF overlay — merge graddage into consumption trend data
+  const monthlyWithGaf = useMemo(() => {
+    if (!isDH || !graddage.data.length) return monthlyData;
+    const ms = MS[lang];
+    return monthlyData.map((pt, mi) => {
+      const gRow = graddage.data.find(d => d.year === 2026 && d.monthIdx === mi);
+      return gRow ? { ...pt, raw: gRow.raw, gaf: gRow.gaf, guf: gRow.guf, degreeDays: gRow.degreeDays, normalDD: gRow.normalDegreeDays } : pt;
+    });
+  }, [monthlyData, graddage, isDH, lang]);
+
+  // Degree days monthly for collapsible chart
+  const degreeDaysMonthly = useMemo(() => {
+    if (!isDH || !graddage.data.length) return [];
+    return GK.map((mk, mi) => {
+      const row = graddage.data.find(d => d.year === 2026 && d.monthIdx === mi);
+      return { name: MS[lang][mi], ng: GN[mk], actual: row ? row.degreeDays : 0 };
+    });
+  }, [graddage, isDH, lang]);
+
+  /* Drill-down chart data — use GAF-enriched data at year level for DH meters */
   const zoomData = useMemo(() => {
-    if (chartZoom.level === "year") return monthlyData;
+    if (chartZoom.level === "year") return isDH ? monthlyWithGaf : monthlyData;
     if (chartZoom.level === "month") {
       const monthValue = monthlyData[chartZoom.monthIdx]?.value || 0;
       return generateDailyData(meter, chartZoom.monthIdx, monthValue);
@@ -361,7 +396,7 @@ export default function MeterDetailPage() {
       return generateHourlyData(meter, chartZoom.monthIdx, chartZoom.dayOfMonth, dayValue);
     }
     return monthlyData;
-  }, [chartZoom, monthlyData, meter]);
+  }, [chartZoom, monthlyData, monthlyWithGaf, meter, isDH]);
 
   /* Can we drill deeper from current level? */
   const canDrillDown = chartZoom.level === "year" || (chartZoom.level === "month" && isHourly);
@@ -512,14 +547,44 @@ export default function MeterDetailPage() {
                     </CardContent></Card>
                   </div>
 
-                  {/* ── Consumption trend — zoomable ── */}
+                  {/* ── Consumption trend — zoomable, with optional GAF overlay for DH ── */}
                   <Card>
                     <CardContent className="p-5">
                       {/* Chart header */}
                       <div className="flex items-center justify-between mb-1">
                         <h3 className="text-[13px] font-semibold text-slate-600">{t("consumptionTrend", lang)}</h3>
-                        <TimePeriodLabel text={periodLabel} />
+                        <div className="flex items-center gap-2">
+                          {/* GAF toggle — DH meters only, year-level only */}
+                          {isDH && chartZoom.level === "year" && (
+                            <button onClick={() => setShowGaf(g => !g)}
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium border transition-all ${showGaf ? "border-transparent text-white shadow-sm" : "border-slate-200 text-slate-400 bg-white hover:bg-slate-50"}`}
+                              style={showGaf ? { backgroundColor: brand.blue } : {}}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${showGaf ? "bg-white" : "bg-slate-300"}`} />
+                              {t("showGafOverlay", lang)}
+                            </button>
+                          )}
+                          <TimePeriodLabel text={periodLabel} />
+                        </div>
                       </div>
+
+                      {/* GAF overlay hint */}
+                      {showGaf && isDH && chartZoom.level === "year" && (
+                        <p className="text-[10px] text-slate-400 mb-1">{t("gafOverlayHint", lang)}</p>
+                      )}
+
+                      {/* GUF info strip — shown when GAF overlay is active */}
+                      {showGaf && isDH && chartZoom.level === "year" && currentYearGaf && (
+                        <div className="flex items-center gap-4 px-3 py-2 mb-2 bg-slate-50 rounded-lg text-[11px] text-slate-500">
+                          <span>GUF 2026: <strong className="text-slate-700">{fmtNum(currentYearGaf.guf, 3)}</strong></span>
+                          <span className="w-px h-3 bg-slate-200" />
+                          <span>{t("degreeDays", lang)}: <strong className="text-slate-700">{fmtNum(currentYearGaf.dd)}</strong></span>
+                          <span className="text-slate-300">({t("normalYear", lang)}: {fmtNum(GNT)})</span>
+                          <span className="text-slate-300">·</span>
+                          <span className={currentYearGaf.guf > 1 ? "text-blue-500" : "text-amber-500"}>
+                            {currentYearGaf.guf > 1 ? t("colderThanNormal", lang) : t("warmerThanNormal", lang)}
+                          </span>
+                        </div>
+                      )}
 
                       {/* Zoom breadcrumb */}
                       {chartZoom.level !== "year" && (
@@ -546,27 +611,68 @@ export default function MeterDetailPage() {
                       )}
 
                       {/* Drill-down hint */}
-                      {canDrillDown && (
+                      {canDrillDown && !showGaf && (
                         <p className="text-[10px] text-slate-300 mb-2">
                           {chartZoom.level === "year" ? t("clickForDaily", lang) : t("clickForHourly", lang)}
                         </p>
                       )}
 
-                      <ResponsiveContainer width="100%" height={200}>
+                      <ResponsiveContainer width="100%" height={showGaf && isDH && chartZoom.level === "year" ? 260 : 200}>
                         <ComposedChart data={zoomData} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                           <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false}
                             interval={chartZoom.level === "day" ? 1 : "preserveStartEnd"} />
                           <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit={` ${meter.lastReading.unit}`} axisLine={false} tickLine={false} />
                           <Tooltip content={<BrandTooltip />} />
-                          <Bar dataKey="value" name={t(meter.type, lang)} fill={color} fillOpacity={canDrillDown ? 0.2 : 0.15}
-                            radius={[3, 3, 0, 0]}
-                            cursor={canDrillDown ? "pointer" : "default"}
-                            onClick={(data, index) => canDrillDown && handleBarClick(data, index)} />
-                          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2}
-                            dot={{ r: 2.5, fill: color, strokeWidth: 0 }} name={t(meter.type, lang)} />
+                          {showGaf && isDH && chartZoom.level === "year" ? (
+                            <>
+                              {/* GAF mode: raw (grey) + GAF (colored) side by side */}
+                              <Bar dataKey="raw" name={t("rawCons", lang)} fill="#CBD5E1" radius={[3, 3, 0, 0]}
+                                cursor={canDrillDown ? "pointer" : "default"}
+                                onClick={(data, index) => canDrillDown && handleBarClick(data, index)} />
+                              <Bar dataKey="gaf" name={t("gafAdj", lang)} fill={brand.blue} radius={[3, 3, 0, 0]} />
+                              <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+                            </>
+                          ) : (
+                            <>
+                              {/* Standard mode: single value bars + trend line */}
+                              <Bar dataKey="value" name={t(meter.type, lang)} fill={color} fillOpacity={canDrillDown ? 0.2 : 0.15}
+                                radius={[3, 3, 0, 0]}
+                                cursor={canDrillDown ? "pointer" : "default"}
+                                onClick={(data, index) => canDrillDown && handleBarClick(data, index)} />
+                              <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2}
+                                dot={{ r: 2.5, fill: color, strokeWidth: 0 }} name={t(meter.type, lang)} />
+                            </>
+                          )}
                         </ComposedChart>
                       </ResponsiveContainer>
+
+                      {/* Collapsible Degree Days detail — DH meters, GAF mode, year level */}
+                      {isDH && showGaf && chartZoom.level === "year" && degreeDaysMonthly.length > 0 && (
+                        <div className="mt-3 border-t border-slate-100 pt-3">
+                          <button onClick={() => setShowDegreeDays(d => !d)}
+                            className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors">
+                            <span className={`inline-block text-[9px] transition-transform duration-200 ${showDegreeDays ? "rotate-90" : ""}`}>▶</span>
+                            {t("ddVsNormal", lang)}
+                          </button>
+                          {showDegreeDays && (
+                            <div className="mt-2">
+                              <p className="text-[10px] text-slate-400/70 mb-2 italic">{t("ddRegionNote", lang)}</p>
+                              <ResponsiveContainer width="100%" height={160}>
+                                <ComposedChart data={degreeDaysMonthly} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+                                  <YAxis tick={{ fontSize: 11, fill: brand.muted }} axisLine={false} tickLine={false} />
+                                  <Tooltip content={<BrandTooltip />} />
+                                  <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+                                  <Line type="monotone" dataKey="ng" stroke={brand.red} strokeWidth={1.5} strokeDasharray="6 4" dot={false} name={t("normalYear", lang)} />
+                                  <Line type="monotone" dataKey="actual" stroke={brand.blue} strokeWidth={1.5} dot={{ r: 2 }} name={`${t("actual", lang)} 2026`} />
+                                </ComposedChart>
+                              </ResponsiveContainer>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
 
@@ -642,8 +748,7 @@ export default function MeterDetailPage() {
                     </Card>
                   )}
 
-                  {/* ── GAF Consumption Benchmark (DH meters only) ── */}
-                  {meter.type === "fjernvarme" && <GafBenchmark meter={meter} lang={lang} />}
+                  {/* GAF Benchmark now integrated into Consumption Trend via toggle */}
                 </div>
               </TabsContent>
 
