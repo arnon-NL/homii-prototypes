@@ -618,7 +618,7 @@ function TariffDash() {
 /* ═══════════════════════════════════════════════════════
    Exported Reports — for the Reports page
    ═══════════════════════════════════════════════════════ */
-export function CoolingReport({ onNavigate }) {
+export function CoolingReport({ navigate }) {
   const lang = useLang();
   const [period, setPeriod] = useState("monthly");
   const [meter, setMeter] = useState("all");
@@ -650,9 +650,9 @@ export function CoolingReport({ onNavigate }) {
           <SelectTrigger className="w-[260px] h-8 text-xs"><SelectValue/></SelectTrigger>
           <SelectContent>{meters.map(m=><SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}</SelectContent>
         </Select>
-        {meter !== "all" && onNavigate && (
+        {meter !== "all" && navigate && (
           <button
-            onClick={() => onNavigate({ page: "meter-detail", meterId: meter })}
+            onClick={() => navigate(`/meters/${meter}`)}
             className="text-[11px] font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors"
             style={{ color: brand.blue }}
           >
@@ -773,7 +773,7 @@ export function CoolingReport({ onNavigate }) {
   );
 }
 
-export function LegionellaReport({ onNavigate }) {
+export function LegionellaReport({ navigate }) {
   const lang = useLang();
   const fjernvarmeMeters = allMeters.filter(m => m.type === "fjernvarme");
   const [selectedMeter, setSelectedMeter] = useState("all");
@@ -838,9 +838,9 @@ export function LegionellaReport({ onNavigate }) {
           <SelectTrigger className="w-[280px] h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>{meterOptions.map(m => <SelectItem key={m.id} value={m.id}>{m.l}</SelectItem>)}</SelectContent>
         </Select>
-        {selectedMeter !== "all" && onNavigate && (
+        {selectedMeter !== "all" && navigate && (
           <button
-            onClick={() => onNavigate({ page: "meter-detail", meterId: selectedMeter })}
+            onClick={() => navigate(`/meters/${selectedMeter}`)}
             className="text-[11px] font-medium px-2 py-1 rounded hover:bg-slate-100 transition-colors"
             style={{ color: brand.blue }}
           >
@@ -942,7 +942,7 @@ export function LegionellaReport({ onNavigate }) {
             const mRiskLabel = { low: t("riskLow", lang), medium: t("riskMedium", lang), high: t("riskHigh", lang) }[mRisk];
             return (
               <tr key={idx} className="hover:bg-slate-50/80 transition-colors cursor-pointer"
-                onClick={() => onNavigate && onNavigate({ page: "meter-detail", meterId: m.id })}>
+                onClick={() => navigate && navigate(`/meters/${m.id}`)}>
                 <td className="px-4 py-2.5 text-sm font-medium" style={{ color: brand.blue }}>{m.id}</td>
                 <td className="px-4 py-2.5 text-sm text-slate-500">{bldg?.name || m.buildingId}</td>
                 <td className={`px-4 py-2.5 text-sm text-right tabular-nums font-medium ${mData.currentTank >= 55 ? "text-emerald-600" : "text-amber-500"}`}>{mData.currentTank}°C</td>

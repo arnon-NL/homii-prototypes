@@ -1,11 +1,13 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { brand, EPC_COLORS } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
 import { buildings, getMetersForBuilding } from "@/lib/mockData";
 import { StatusBadge } from "@/components/ui/status-badge";
 
-export default function BuildingListPage({ onNavigate }) {
+export default function BuildingListPage() {
   const lang = useLang();
+  const navigate = useNavigate();
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -35,7 +37,7 @@ export default function BuildingListPage({ onNavigate }) {
                 return (
                   <tr
                     key={b.id}
-                    onClick={() => onNavigate({ page: "building-detail", buildingId: b.id })}
+                    onClick={() => navigate(`/buildings/${b.id}`)}
                     className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                   >
                     <td className="px-5 py-3">

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Flame, Droplets, Zap, Search } from "lucide-react";
 import { brand } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
@@ -8,8 +9,9 @@ import { StatusBadge } from "@/components/ui/status-badge";
 const typeIcons = { fjernvarme: Flame, vand: Droplets, el: Zap };
 const typeColors = { fjernvarme: "#EF4444", vand: "#3B82F6", el: "#F59E0B" };
 
-export default function MetersPage({ onNavigate }) {
+export default function MetersPage() {
   const lang = useLang();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
 
@@ -103,7 +105,7 @@ export default function MetersPage({ onNavigate }) {
                 return (
                   <tr key={m.id}
                     className="hover:bg-slate-50/80 transition-colors cursor-pointer"
-                    onClick={() => onNavigate({ page: "meter-detail", meterId: m.id })}
+                    onClick={() => navigate(`/meters/${m.id}`)}
                   >
                     <td className="px-5 py-3">
                       <span className="text-sm font-mono font-medium" style={{ color: brand.navy }}>{m.id}</span>
@@ -119,7 +121,7 @@ export default function MetersPage({ onNavigate }) {
                     <td className="px-5 py-3">
                       <button
                         className="text-sm text-slate-600 hover:text-[#3EB1C8] transition-colors"
-                        onClick={(e) => { e.stopPropagation(); onNavigate({ page: "building-detail", buildingId: m.buildingId }); }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/buildings/${m.buildingId}`); }}
                       >
                         {m.buildingName}
                       </button>
@@ -127,7 +129,7 @@ export default function MetersPage({ onNavigate }) {
                     <td className="px-5 py-3">
                       <button
                         className="text-sm text-slate-500 hover:text-[#3EB1C8] transition-colors"
-                        onClick={(e) => { e.stopPropagation(); onNavigate({ page: "supplier-detail", supplierId: m.supplierId }); }}
+                        onClick={(e) => { e.stopPropagation(); navigate(`/suppliers/${m.supplierId}`); }}
                       >
                         {m.supplierName}
                       </button>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Flame, Droplets, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { brand, EPC_COLORS } from "@/lib/brand";
@@ -10,8 +11,9 @@ import DashboardContainer from "./homii-energy-dashboard";
 const serviceIcons = { fjernvarme: Flame, vand: Droplets, el: Zap };
 const serviceColors = { fjernvarme: "#EF4444", vand: "#3B82F6", el: "#F59E0B" };
 
-export default function ServiceDetailPage({ buildingId, serviceId, onNavigate }) {
+export default function ServiceDetailPage({ buildingId, serviceId }) {
   const lang = useLang();
+  const navigate = useNavigate();
   const building = buildings.find(b => b.id === buildingId);
   const service = building?.services.find(s => s.id === serviceId);
 
@@ -21,8 +23,8 @@ export default function ServiceDetailPage({ buildingId, serviceId, onNavigate })
   const color = serviceColors[service.type] || brand.blue;
 
   const crumbs = [
-    { label: t("buildings", lang), onClick: () => onNavigate({ page: "buildings" }) },
-    { label: building.name, onClick: () => onNavigate({ page: "building-detail", buildingId: building.id }) },
+    { label: t("buildings", lang), to: "/buildings" },
+    { label: building.name, to: `/buildings/${building.id}` },
     { label: t(service.type, lang) },
   ];
 

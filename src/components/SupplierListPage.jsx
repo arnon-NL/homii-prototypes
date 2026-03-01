@@ -1,12 +1,14 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Truck, Search, ArrowRight } from "lucide-react";
 import { brand } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
 import { suppliers, getMetersForSupplier, getBuildingsForSupplier } from "@/lib/mockData";
 import { StatusBadge } from "@/components/ui/status-badge";
 
-export default function SupplierListPage({ onNavigate }) {
+export default function SupplierListPage() {
   const lang = useLang();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
   const rows = useMemo(() => {
@@ -67,7 +69,7 @@ export default function SupplierListPage({ onNavigate }) {
               {filtered.map(s => (
                 <tr key={s.id}
                   className="hover:bg-slate-50/80 transition-colors cursor-pointer"
-                  onClick={() => onNavigate({ page: "supplier-detail", supplierId: s.id })}
+                  onClick={() => navigate(`/suppliers/${s.id}`)}
                 >
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2.5">

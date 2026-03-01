@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { brand, HOFOR, EPC_COLORS } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
@@ -185,7 +186,7 @@ function KpiCard({ icon: IconComp, label, value, sub, color }) {
 /* ═══════════════════════════════════════════════════════
    Insight row — compact for portfolio view
    ═══════════════════════════════════════════════════════ */
-function InsightRow({ rec, lang, onNavigate }) {
+function InsightRow({ rec, lang, navigate }) {
   const p = priorityConfig[rec.priority];
   const CatIcon = categoryIcons[rec.category] || Zap;
 
@@ -193,7 +194,7 @@ function InsightRow({ rec, lang, onNavigate }) {
     <div
       className="flex items-center gap-3 px-4 py-3 rounded-lg border transition-all hover:shadow-sm cursor-pointer group"
       style={{ borderColor: p.border, background: p.bg + "60" }}
-      onClick={() => onNavigate({ page: "building-detail", buildingId: rec.building.id })}
+      onClick={() => navigate(`/buildings/${rec.building.id}`)}
     >
       {/* Icon */}
       <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
@@ -322,8 +323,9 @@ function MethodologyPanel({ lang }) {
 /* ═══════════════════════════════════════════════════════
    Home Page
    ═══════════════════════════════════════════════════════ */
-export default function HomePage({ onNavigate }) {
+export default function HomePage() {
   const lang = useLang();
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState(null);
   const [showAll, setShowAll] = useState(false);
 
@@ -469,7 +471,7 @@ export default function HomePage({ onNavigate }) {
           {/* Insight list */}
           <div className="space-y-2">
             {displayRecs.map(rec => (
-              <InsightRow key={rec.id} rec={rec} lang={lang} onNavigate={onNavigate} />
+              <InsightRow key={rec.id} rec={rec} lang={lang} navigate={navigate} />
             ))}
           </div>
 
@@ -502,7 +504,7 @@ export default function HomePage({ onNavigate }) {
                 <Card
                   key={b.id}
                   className="cursor-pointer hover:shadow-md transition-all group"
-                  onClick={() => onNavigate({ page: "building-detail", buildingId: b.id })}
+                  onClick={() => navigate(`/buildings/${b.id}`)}
                 >
                   <CardContent className="p-4 flex items-center gap-4">
                     <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"

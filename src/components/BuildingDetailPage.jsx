@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Flame, Droplets, Zap, Activity, ArrowRight, AlertTriangle, CheckCircle2 } from "lucide-react";
@@ -14,7 +15,9 @@ import SmartInsights from "./SmartInsights";
 const typeIcons = { fjernvarme: Flame, vand: Droplets, el: Zap };
 const typeColors = { fjernvarme: "#EF4444", vand: "#3B82F6", el: "#F59E0B" };
 
-export default function BuildingDetailPage({ buildingId, onNavigate }) {
+export default function BuildingDetailPage() {
+  const { buildingId } = useParams();
+  const navigate = useNavigate();
   const lang = useLang();
   const building = getBuilding(buildingId);
 
@@ -24,7 +27,7 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
   const suppliers = useMemo(() => getSuppliersForBuilding(buildingId), [buildingId]);
 
   const crumbs = [
-    { label: t("buildings", lang), onClick: () => onNavigate({ page: "buildings" }) },
+    { label: t("buildings", lang), to: "/buildings" },
     { label: building.name },
   ];
 
@@ -145,7 +148,7 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
                           return (
                             <tr key={m.id}
                               className="hover:bg-slate-50/80 transition-colors cursor-pointer"
-                              onClick={() => onNavigate({ page: "meter-detail", meterId: m.id })}
+                              onClick={() => navigate(`/meters/${m.id}`)}
                             >
                               <td className="px-5 py-3">
                                 <span className="text-sm font-mono font-medium" style={{ color: brand.navy }}>{m.id}</span>
@@ -222,11 +225,11 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
               items={[
                 ...meters.map(m => ({
                   label: `${t("meter", lang)}: ${m.id}`,
-                  onClick: () => onNavigate({ page: "meter-detail", meterId: m.id }),
+                  onClick: () => navigate(`/meters/${m.id}`),
                 })),
                 ...suppliers.map(s => ({
                   label: `${t("supplier", lang)}: ${s.name}`,
-                  onClick: () => onNavigate({ page: "supplier-detail", supplierId: s.id }),
+                  onClick: () => navigate(`/suppliers/${s.id}`),
                 })),
               ]}
             />

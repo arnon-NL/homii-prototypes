@@ -1,4 +1,5 @@
 import React from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, ArrowRight, Thermometer, Shield, BarChart3, Zap } from "lucide-react";
 import { brand } from "@/lib/brand";
@@ -42,14 +43,16 @@ const reports = [
   },
 ];
 
-export default function ReportsPage({ onNavigate, reportId }) {
+export default function ReportsPage() {
+  const { reportId } = useParams();
+  const navigate = useNavigate();
   const lang = useLang();
 
   // Report detail view
   if (reportId) {
     const report = reports.find(r => r.id === reportId);
     const crumbs = [
-      { label: t("reports", lang), onClick: () => onNavigate({ page: "reports" }) },
+      { label: t("reports", lang), to: "/reports" },
       { label: t(report?.titleKey || "reports", lang) },
     ];
 
@@ -59,15 +62,15 @@ export default function ReportsPage({ onNavigate, reportId }) {
           <Breadcrumbs items={crumbs} />
           <div className="mb-6">
             <button
-              onClick={() => onNavigate({ page: "reports" })}
+              onClick={() => navigate("/reports")}
               className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 transition-colors mb-3"
             >
               <ArrowLeft size={14} />
               {t("back", lang)}
             </button>
           </div>
-          {reportId === "cooling" && <CoolingReport onNavigate={onNavigate} />}
-          {reportId === "legionella" && <LegionellaReport onNavigate={onNavigate} />}
+          {reportId === "cooling" && <CoolingReport navigate={navigate} />}
+          {reportId === "legionella" && <LegionellaReport navigate={navigate} />}
           {reportId === "epc" && (
             <div className="space-y-4">
               <div className="text-center py-12 text-slate-400">
@@ -108,7 +111,7 @@ export default function ReportsPage({ onNavigate, reportId }) {
               <Card
                 key={report.id}
                 className="cursor-pointer hover:shadow-md transition-all group"
-                onClick={() => onNavigate({ page: "reports", reportId: report.id })}
+                onClick={() => navigate(`/reports/${report.id}`)}
               >
                 <CardContent className="p-5">
                   <div className="flex items-start gap-4">

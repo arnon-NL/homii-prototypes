@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Flame, Droplets, Zap, Activity, ChevronRight, AlertCircle, Radio, Clock } from "lucide-react";
@@ -171,7 +172,9 @@ const TempTooltip = ({ active, payload, label }) => {
 /* ═══════════════════════════════════════════════════════
    Component
    ═══════════════════════════════════════════════════════ */
-export default function MeterDetailPage({ meterId, onNavigate }) {
+export default function MeterDetailPage() {
+  const { meterId } = useParams();
+  const navigate = useNavigate();
   const lang = useLang();
   const meter = getMeter(meterId);
 
@@ -213,7 +216,7 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
   const canDrillDown = chartZoom.level === "year" || (chartZoom.level === "month" && isHourly);
 
   const crumbs = [
-    { label: t("meters", lang), onClick: () => onNavigate({ page: "meters" }) },
+    { label: t("meters", lang), to: "/meters" },
     { label: meter.id },
   ];
 
@@ -560,11 +563,11 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
               items={[
                 ...(building ? [{
                   label: `${t("building", lang)}: ${building.name}`,
-                  onClick: () => onNavigate({ page: "building-detail", buildingId: building.id }),
+                  onClick: () => navigate(`/buildings/${building.id}`),
                 }] : []),
                 ...(supplier ? [{
                   label: `${t("supplier", lang)}: ${supplier.name}`,
-                  onClick: () => onNavigate({ page: "supplier-detail", supplierId: supplier.id }),
+                  onClick: () => navigate(`/suppliers/${supplier.id}`),
                 }] : []),
               ]}
             />

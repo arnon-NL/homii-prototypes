@@ -1,47 +1,55 @@
 import React from "react";
+import { NavLink } from "react-router-dom";
 import { Home, Inbox, CheckSquare, BarChart3, Zap, Building2, Gauge, Truck, Search, Database } from "lucide-react";
 import { brand, HomiiIcon } from "@/lib/brand";
 import { t } from "@/lib/i18n";
 import { buildings, meters, suppliers } from "@/lib/mockData";
 
 const navItems = [
-  { id: "home",      icon: Home,        key: "home" },
-  { id: "inbox",     icon: Inbox,       key: "inbox" },
-  { id: "tasks",     icon: CheckSquare, key: "tasks" },
+  { path: "/",          icon: Home,        key: "home" },
+  { path: "/inbox",     icon: Inbox,       key: "inbox" },
+  { path: "/tasks",     icon: CheckSquare, key: "tasks" },
 ];
 
 const recordItems = [
-  { id: "buildings", icon: Building2, key: "buildings", count: buildings.length },
-  { id: "meters",    icon: Gauge,     key: "meters",    count: meters.length },
-  { id: "suppliers", icon: Truck,     key: "suppliers",  count: suppliers.length },
+  { path: "/buildings", icon: Building2, key: "buildings", count: buildings.length },
+  { path: "/meters",    icon: Gauge,     key: "meters",    count: meters.length },
+  { path: "/suppliers", icon: Truck,     key: "suppliers",  count: suppliers.length },
 ];
 
 const analyseItems = [
-  { id: "reports",   icon: BarChart3, key: "reports" },
+  { path: "/reports",   icon: BarChart3, key: "reports" },
 ];
 
 const systemItems = [
-  { id: "workflows",    icon: Zap,       key: "workflows" },
-  { id: "data-sources", icon: Database,  key: "dataSources" },
+  { path: "/workflows",    icon: Zap,       key: "workflows" },
+  { path: "/data-sources", icon: Database,  key: "dataSources" },
 ];
 
-function NavButton({ item, isActive, onNavigate, lang, showCount }) {
+function NavButton({ item, lang, showCount }) {
   const Icon = item.icon;
   return (
-    <button
-      onClick={() => onNavigate({ page: item.id })}
-      className={`w-full flex items-center gap-2.5 h-8 px-2.5 rounded-md text-[13px] transition-colors ${
-        isActive
-          ? "bg-slate-200/60 text-slate-900 font-medium"
-          : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-      }`}
+    <NavLink
+      to={item.path}
+      end={item.path === "/"}
+      className={({ isActive }) =>
+        `w-full flex items-center gap-2.5 h-8 px-2.5 rounded-md text-[13px] transition-colors no-underline ${
+          isActive
+            ? "bg-slate-200/60 text-slate-900 font-medium"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
+        }`
+      }
     >
-      <Icon size={15} strokeWidth={isActive ? 2 : 1.5} />
-      <span className="flex-1 text-left">{t(item.key, lang)}</span>
-      {showCount && item.count != null && (
-        <span className="text-[10px] text-slate-400 tabular-nums">{item.count}</span>
+      {({ isActive }) => (
+        <>
+          <Icon size={15} strokeWidth={isActive ? 2 : 1.5} />
+          <span className="flex-1 text-left">{t(item.key, lang)}</span>
+          {showCount && item.count != null && (
+            <span className="text-[10px] text-slate-400 tabular-nums">{item.count}</span>
+          )}
+        </>
       )}
-    </button>
+    </NavLink>
   );
 }
 
@@ -53,7 +61,7 @@ function SectionLabel({ label }) {
   );
 }
 
-export default function Sidebar({ activePage, onNavigate, lang, onLangChange }) {
+export default function Sidebar({ lang, onLangChange }) {
   return (
     <aside className="w-60 shrink-0 border-r border-slate-200 bg-slate-50/80 flex flex-col h-full select-none">
       {/* Org header — KAB workspace */}
@@ -85,28 +93,28 @@ export default function Sidebar({ activePage, onNavigate, lang, onLangChange }) 
       {/* Navigation */}
       <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto">
         {navItems.map(item => (
-          <NavButton key={item.id} item={item} isActive={activePage === item.id} onNavigate={onNavigate} lang={lang} />
+          <NavButton key={item.path} item={item} lang={lang} />
         ))}
 
         <div className="h-px bg-slate-200 my-2 mx-1" />
 
         <SectionLabel label={t("records", lang)} />
         {recordItems.map(item => (
-          <NavButton key={item.id} item={item} isActive={activePage === item.id} onNavigate={onNavigate} lang={lang} showCount />
+          <NavButton key={item.path} item={item} lang={lang} showCount />
         ))}
 
         <div className="h-px bg-slate-200 my-2 mx-1" />
 
         <SectionLabel label={t("analyse", lang)} />
         {analyseItems.map(item => (
-          <NavButton key={item.id} item={item} isActive={activePage === item.id} onNavigate={onNavigate} lang={lang} />
+          <NavButton key={item.path} item={item} lang={lang} />
         ))}
 
         <div className="h-px bg-slate-200 my-2 mx-1" />
 
         <SectionLabel label={t("system", lang)} />
         {systemItems.map(item => (
-          <NavButton key={item.id} item={item} isActive={activePage === item.id} onNavigate={onNavigate} lang={lang} />
+          <NavButton key={item.path} item={item} lang={lang} />
         ))}
       </nav>
 

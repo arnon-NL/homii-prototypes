@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Truck, Flame, Droplets, Zap, Activity, ArrowRight } from "lucide-react";
@@ -13,7 +14,9 @@ import Breadcrumbs from "./Breadcrumbs";
 const typeIcons = { fjernvarme: Flame, vand: Droplets, el: Zap };
 const typeColors = { fjernvarme: "#EF4444", vand: "#3B82F6", el: "#F59E0B" };
 
-export default function SupplierDetailPage({ supplierId, onNavigate }) {
+export default function SupplierDetailPage() {
+  const { supplierId } = useParams();
+  const navigate = useNavigate();
   const lang = useLang();
   const supplier = getSupplier(supplierId);
 
@@ -23,7 +26,7 @@ export default function SupplierDetailPage({ supplierId, onNavigate }) {
   const buildings = useMemo(() => getBuildingsForSupplier(supplierId), [supplierId]);
 
   const crumbs = [
-    { label: t("suppliers", lang), onClick: () => onNavigate({ page: "suppliers" }) },
+    { label: t("suppliers", lang), to: "/suppliers" },
     { label: supplier.name },
   ];
 
@@ -104,7 +107,7 @@ export default function SupplierDetailPage({ supplierId, onNavigate }) {
                         {buildings.map(b => (
                           <div key={b.id}
                             className="flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer transition-colors"
-                            onClick={() => onNavigate({ page: "building-detail", buildingId: b.id })}
+                            onClick={() => navigate(`/buildings/${b.id}`)}
                           >
                             <div>
                               <p className="text-sm font-medium" style={{ color: brand.navy }}>{b.name}</p>
@@ -167,7 +170,7 @@ export default function SupplierDetailPage({ supplierId, onNavigate }) {
                           return (
                             <tr key={m.id}
                               className="hover:bg-slate-50/80 transition-colors cursor-pointer"
-                              onClick={() => onNavigate({ page: "meter-detail", meterId: m.id })}
+                              onClick={() => navigate(`/meters/${m.id}`)}
                             >
                               <td className="px-5 py-3">
                                 <span className="text-sm font-mono font-medium" style={{ color: brand.navy }}>{m.id}</span>
@@ -214,11 +217,11 @@ export default function SupplierDetailPage({ supplierId, onNavigate }) {
               items={[
                 ...buildings.map(b => ({
                   label: `${t("building", lang)}: ${b.name}`,
-                  onClick: () => onNavigate({ page: "building-detail", buildingId: b.id }),
+                  onClick: () => navigate(`/buildings/${b.id}`),
                 })),
                 ...meters.slice(0, 5).map(m => ({
                   label: `${t("meter", lang)}: ${m.id}`,
-                  onClick: () => onNavigate({ page: "meter-detail", meterId: m.id }),
+                  onClick: () => navigate(`/meters/${m.id}`),
                 })),
               ]}
             />
