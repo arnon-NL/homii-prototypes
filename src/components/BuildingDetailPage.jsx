@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Flame, Droplets, Zap, Activity, ArrowRight } from "lucide-react";
+import { Flame, Droplets, Zap, Activity, ArrowRight, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { brand, EPC_COLORS } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
 import { getBuilding, getMetersForBuilding, getSuppliersForBuilding } from "@/lib/mockData";
@@ -94,7 +94,22 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="inline-flex items-center justify-center w-8 h-8 rounded text-sm font-bold text-white" style={{ background: EPC_COLORS[building.epc] }}>{building.epc}</span>
-                        <span className="text-xs text-slate-400">{t("epcReq", lang)}</span>
+                        <div>
+                          <span className="text-xs text-slate-400 block">{t("epcReq", lang)}</span>
+                          {building.epcExpiresDate && (() => {
+                            const exp = new Date(building.epcExpiresDate);
+                            const now = new Date();
+                            const monthsLeft = Math.round((exp - now) / (1000 * 60 * 60 * 24 * 30));
+                            const isExpired = monthsLeft <= 0;
+                            const expiresSoon = monthsLeft > 0 && monthsLeft <= 12;
+                            return (
+                              <span className={`flex items-center gap-1 text-[10px] mt-0.5 ${isExpired ? "text-red-500 font-semibold" : expiresSoon ? "text-amber-600" : "text-slate-400"}`}>
+                                {isExpired ? <AlertTriangle size={9} /> : expiresSoon ? <AlertTriangle size={9} /> : <CheckCircle2 size={9} />}
+                                {isExpired ? t("epcExpired", lang) : expiresSoon ? `${t("epcExpiresSoon", lang)} (${monthsLeft} mdr.)` : t("epcValid", lang)} — {building.epcExpiresDate}
+                              </span>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </CardContent></Card>
                     <Card><CardContent className="p-4">
@@ -186,7 +201,21 @@ export default function BuildingDetailPage({ buildingId, onNavigate }) {
               <AttrRow label={t("municipality", lang)} value={building.municipality} />
               <AttrRow label={t("owner", lang)} value={building.owner} />
               <AttrRow label={t("administrator", lang)} value={building.administrator} />
+              {building.epcCertifiedDate && (
+                <AttrRow label={t("epcCertified", lang)} value={building.epcCertifiedDate} />
+              )}
+              {building.epcExpiresDate && (
+                <AttrRow label={t("epcExpires", lang)} value={building.epcExpiresDate} />
+              )}
+              {building.bbrLastUpdated && (
+                <AttrRow label={t("bbrLastUpdated", lang)} value={building.bbrLastUpdated} />
+              )}
             </AttrSection>
+
+            {/* BBR source note */}
+            <div className="px-3 py-2 bg-slate-50/80 rounded-lg">
+              <p className="text-[10px] text-slate-400 italic">{t("bbrSource", lang)}</p>
+            </div>
 
             <AttrLink
               title={t("relationships", lang)}

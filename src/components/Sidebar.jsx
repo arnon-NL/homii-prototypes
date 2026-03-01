@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Inbox, CheckSquare, BarChart3, Zap, Building2, Gauge, Truck, Search } from "lucide-react";
+import { Home, Inbox, CheckSquare, BarChart3, Zap, Building2, Gauge, Truck, Search, Database } from "lucide-react";
 import { brand, HomiiIcon } from "@/lib/brand";
 import { t } from "@/lib/i18n";
 import { buildings, meters, suppliers } from "@/lib/mockData";
@@ -21,7 +21,8 @@ const analyseItems = [
 ];
 
 const systemItems = [
-  { id: "workflows", icon: Zap,       key: "workflows" },
+  { id: "workflows",    icon: Zap,       key: "workflows" },
+  { id: "data-sources", icon: Database,  key: "dataSources" },
 ];
 
 function NavButton({ item, isActive, onNavigate, lang, showCount }) {

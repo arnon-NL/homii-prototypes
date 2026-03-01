@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Flame, Droplets, Zap, Activity, ChevronRight } from "lucide-react";
+import { Flame, Droplets, Zap, Activity, ChevronRight, AlertCircle, Radio, Clock } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend, ReferenceLine } from "recharts";
 import { brand, EPC_COLORS, HOFOR } from "@/lib/brand";
 import { t, useLang, MS, ML } from "@/lib/i18n";
-import { getMeter, getBuilding, getSupplier, meters } from "@/lib/mockData";
+import { getMeter, getBuilding, getSupplier, meters, billingCycles } from "@/lib/mockData";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AttributePanel, AttrSection, AttrRow, AttrLink } from "@/components/ui/attribute-panel";
 import { InfoTooltip, TimePeriodLabel } from "@/components/ui/info-tooltip";
@@ -190,7 +190,8 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
   /* ── Data ── */
   const monthlyData = useMemo(() => generateMonthlyReadings(meter, lang), [meter, lang]);
   const recentReadings = useMemo(() => generateRecentReadings(meter), [meter]);
-  const tempData = useMemo(() => meter.type === "fjernvarme" ? generateTempData(meter, tempRange) : null, [meter, tempRange]);
+  const tempData = useMemo(() => (meter.type === "fjernvarme" && meter.hasTemperatureData) ? generateTempData(meter, tempRange) : null, [meter, tempRange]);
+  const showTempUnavailable = meter.type === "fjernvarme" && !meter.hasTemperatureData;
 
   /* Drill-down chart data */
   const zoomData = useMemo(() => {
@@ -253,15 +254,62 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
               <h1 className="text-xl font-semibold font-mono" style={{ color: brand.navy }}>{meter.id}</h1>
               <StatusBadge status={meter.status} lang={lang} />
             </div>
-            <p className="text-sm text-slate-400">{t(meter.type, lang)} — {building?.name || meter.buildingId}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-slate-400">{t(meter.type, lang)} — {building?.name || meter.buildingId}</p>
+              {/* Data source badge */}
+              <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-500">
+                <Radio size={8} />
+                {meter.dataSource === "eloverblik" ? t("viaEloverblik", lang) : t("viaKamstrupReady", lang)}
+              </span>
+            </div>
             <div className="flex items-center gap-4 mt-1.5 text-xs text-slate-500">
               <span>{t("lastReading", lang)}: <strong className="font-medium">{meter.lastReading.value} {meter.lastReading.unit}</strong></span>
               <span className="w-px h-3 bg-slate-200" />
               <span>{meter.lastReading.date}</span>
+              {meter.lastReading.receivedDate && meter.lastReading.receivedDate !== meter.lastReading.date && (
+                <>
+                  <span className="w-px h-3 bg-slate-200" />
+                  <span className="flex items-center gap-1 text-amber-600">
+                    <Clock size={10} />
+                    {t("dataReceivedAt", lang)}: {meter.lastReading.receivedDate}
+                  </span>
+                </>
+              )}
               <TimePeriodLabel text={t("last12Months", lang)} />
             </div>
           </div>
         </div>
+
+        {/* D+1 delay banner for Eloverblik meters */}
+        {meter.dataSource === "eloverblik" && (
+          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200/60">
+            <Clock size={13} className="text-amber-500 shrink-0" />
+            <p className="text-[11px] text-amber-700">{t("dataDelayD1", lang)}</p>
+          </div>
+        )}
+
+        {/* Diagnostic context for offline/error meters */}
+        {meter.statusDetail && (
+          <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg border"
+            style={{
+              background: meter.status === "error" ? "#FEF2F2" : "#FFFBEB",
+              borderColor: meter.status === "error" ? "#FECACA" : "#FDE68A",
+            }}>
+            <AlertCircle size={13} className={meter.status === "error" ? "text-red-500" : "text-amber-500"} />
+            <p className="text-[11px]" style={{ color: meter.status === "error" ? "#991B1B" : "#92400E" }}>
+              {meter.statusDetail[lang] || meter.statusDetail.en}
+            </p>
+          </div>
+        )}
+
+        {/* Billing cycle label */}
+        {(() => { const activeCycle = billingCycles.find(c => c.active); return activeCycle ? (
+          <div className="flex items-center gap-2 mb-4 text-[11px] text-slate-400">
+            <span className="font-medium">{t("billingCycleLabel", lang)}:</span>
+            <span className="bg-slate-100 rounded px-2 py-0.5 font-mono text-[10px]">{activeCycle.label}</span>
+            <span className="text-slate-300">({activeCycle.start} → {activeCycle.end})</span>
+          </div>
+        ) : null; })()}
 
         {/* Content: tabs + attribute panel */}
         <div className="flex gap-6">
@@ -373,7 +421,13 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
                     <Card>
                       <CardContent className="p-5">
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-[13px] font-semibold text-slate-600">{t("chartTitle", lang)}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-[13px] font-semibold text-slate-600">{t("chartTitle", lang)}</h3>
+                            {/* Tariff version label */}
+                            <span className="text-[10px] bg-slate-100 text-slate-400 rounded px-1.5 py-0.5 font-medium">
+                              {HOFOR.tariffVersion} · {t("tariffSourceContract", lang)}
+                            </span>
+                          </div>
                           {/* Time range pills */}
                           <div className="flex items-center gap-1">
                             {[
@@ -410,6 +464,26 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
                               name={t("coolingLine", lang)} />
                           </ComposedChart>
                         </ResponsiveContainer>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Temperature data unavailable — legacy meter */}
+                  {showTempUnavailable && (
+                    <Card>
+                      <CardContent className="p-5">
+                        <div className="flex items-center gap-3 py-6">
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-100">
+                            <AlertCircle size={18} className="text-slate-400" />
+                          </div>
+                          <div>
+                            <h3 className="text-[13px] font-semibold text-slate-500">{t("tempDataUnavailable", lang)}</h3>
+                            <p className="text-[11px] text-slate-400 mt-0.5 max-w-md">{t("tempDataUnavailableSub", lang)}</p>
+                            {meter.statusDetail && (
+                              <p className="text-[10px] text-slate-300 mt-1 italic">{meter.statusDetail[lang] || meter.statusDetail.en}</p>
+                            )}
+                          </div>
+                        </div>
                       </CardContent>
                     </Card>
                   )}
@@ -478,6 +552,7 @@ export default function MeterDetailPage({ meterId, onNavigate }) {
               <AttrRow label={t("meterUnit", lang)} value={meter.unit} />
               <AttrRow label={t("readingFrequency", lang)} value={freqLabel} />
               <AttrRow label={t("dataQuality", lang)} value={qualityLabel} color={qualityColor} />
+              <AttrRow label={t("dataSource", lang)} value={meter.dataSource === "eloverblik" ? "Eloverblik" : "Kamstrup READy"} />
             </AttrSection>
 
             <AttrLink

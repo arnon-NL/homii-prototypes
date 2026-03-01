@@ -48,22 +48,25 @@ export const suppliers = [
 ];
 
 /* ─── Meters (first-class objects) ─── */
+/* dataSource: where data is fetched from (Eloverblik, Kamstrup READy, etc.)
+   hasTemperatureData: whether DH meter reports supply/return temps (not all do)
+   statusDetail: diagnostic context for offline/error states */
 export const meters = [
   // KAB Ørestad
-  { id: "KAM-DH-001", type: "fjernvarme", unit: "MWh", secondaryUnit: "m³", buildingId: "kab-orestad", supplierId: "hofor", status: "active", serialNumber: "KAM-2019-44012", installDate: "2019-03-15", readingFrequency: "hourly", dataQuality: "high", lastReading: { value: 287.4, unit: "MWh", date: "2026-02-24" } },
-  { id: "KAM-WA-012", type: "vand", unit: "m³", secondaryUnit: null, buildingId: "kab-orestad", supplierId: "hofor", status: "active", serialNumber: "KAM-2019-44013", installDate: "2019-03-15", readingFrequency: "daily", dataQuality: "high", lastReading: { value: 2845, unit: "m³", date: "2026-02-24" } },
-  { id: "KAM-EL-034", type: "el", unit: "MWh", secondaryUnit: null, buildingId: "kab-orestad", supplierId: "orsted", status: "active", serialNumber: "KAM-2020-55034", installDate: "2020-06-01", readingFrequency: "hourly", dataQuality: "high", lastReading: { value: 62.3, unit: "MWh", date: "2026-02-24" } },
+  { id: "KAM-DH-001", type: "fjernvarme", unit: "MWh", secondaryUnit: "m³", buildingId: "kab-orestad", supplierId: "hofor", status: "active", serialNumber: "KAM-2019-44012", installDate: "2019-03-15", readingFrequency: "hourly", dataQuality: "high", dataSource: "kamstrup-ready", hasTemperatureData: true, statusDetail: null, lastReading: { value: 287.4, unit: "MWh", date: "2026-02-24", receivedDate: "2026-02-24" } },
+  { id: "KAM-WA-012", type: "vand", unit: "m³", secondaryUnit: null, buildingId: "kab-orestad", supplierId: "hofor", status: "active", serialNumber: "KAM-2019-44013", installDate: "2019-03-15", readingFrequency: "daily", dataQuality: "high", dataSource: "kamstrup-ready", hasTemperatureData: false, statusDetail: null, lastReading: { value: 2845, unit: "m³", date: "2026-02-24", receivedDate: "2026-02-24" } },
+  { id: "KAM-EL-034", type: "el", unit: "MWh", secondaryUnit: null, buildingId: "kab-orestad", supplierId: "orsted", status: "active", serialNumber: "KAM-2020-55034", installDate: "2020-06-01", readingFrequency: "hourly", dataQuality: "high", dataSource: "eloverblik", hasTemperatureData: false, statusDetail: null, lastReading: { value: 62.3, unit: "MWh", date: "2026-02-23", receivedDate: "2026-02-24" } },
   // AB Søndergaard
-  { id: "KAM-DH-045", type: "fjernvarme", unit: "MWh", secondaryUnit: "m³", buildingId: "ab-soendergaard", supplierId: "hofor", status: "active", serialNumber: "KAM-2021-66045", installDate: "2021-01-10", readingFrequency: "hourly", dataQuality: "high", lastReading: { value: 154.8, unit: "MWh", date: "2026-02-23" } },
-  { id: "KAM-WA-046", type: "vand", unit: "m³", secondaryUnit: null, buildingId: "ab-soendergaard", supplierId: "hofor", status: "offline", serialNumber: "KAM-2021-66046", installDate: "2021-01-10", readingFrequency: "daily", dataQuality: "low", lastReading: { value: 1203, unit: "m³", date: "2026-02-10" } },
+  { id: "KAM-DH-045", type: "fjernvarme", unit: "MWh", secondaryUnit: "m³", buildingId: "ab-soendergaard", supplierId: "hofor", status: "active", serialNumber: "KAM-2021-66045", installDate: "2021-01-10", readingFrequency: "hourly", dataQuality: "high", dataSource: "kamstrup-ready", hasTemperatureData: true, statusDetail: null, lastReading: { value: 154.8, unit: "MWh", date: "2026-02-23", receivedDate: "2026-02-23" } },
+  { id: "KAM-WA-046", type: "vand", unit: "m³", secondaryUnit: null, buildingId: "ab-soendergaard", supplierId: "hofor", status: "offline", serialNumber: "KAM-2021-66046", installDate: "2021-01-10", readingFrequency: "daily", dataQuality: "low", dataSource: "kamstrup-ready", hasTemperatureData: false, statusDetail: { da: "Intet signal i 14 dage — seneste gateway-ping 10. feb", en: "No signal for 14 days — last gateway ping Feb 10" }, lastReading: { value: 1203, unit: "m³", date: "2026-02-10", receivedDate: "2026-02-10" } },
   // FSB Tingbjerg
-  { id: "KAM-DH-089", type: "fjernvarme", unit: "MWh", secondaryUnit: "m³", buildingId: "fsb-tingbjerg", supplierId: "hofor", status: "active", serialNumber: "KAM-2018-33089", installDate: "2018-09-01", readingFrequency: "hourly", dataQuality: "medium", lastReading: { value: 482.1, unit: "MWh", date: "2026-02-24" } },
-  { id: "KAM-WA-090", type: "vand", unit: "m³", secondaryUnit: null, buildingId: "fsb-tingbjerg", supplierId: "hofor", status: "active", serialNumber: "KAM-2018-33090", installDate: "2018-09-01", readingFrequency: "daily", dataQuality: "high", lastReading: { value: 5120, unit: "m³", date: "2026-02-24" } },
-  { id: "KAM-EL-091", type: "el", unit: "MWh", secondaryUnit: null, buildingId: "fsb-tingbjerg", supplierId: "orsted", status: "error", serialNumber: "KAM-2018-33091", installDate: "2018-09-01", readingFrequency: "hourly", dataQuality: "low", lastReading: { value: 98.7, unit: "MWh", date: "2026-02-15" } },
+  { id: "KAM-DH-089", type: "fjernvarme", unit: "MWh", secondaryUnit: "m³", buildingId: "fsb-tingbjerg", supplierId: "hofor", status: "active", serialNumber: "KAM-2018-33089", installDate: "2018-09-01", readingFrequency: "hourly", dataQuality: "medium", dataSource: "kamstrup-ready", hasTemperatureData: false, statusDetail: { da: "Ældre måler — kun energi + volumen, ingen temperaturdata", en: "Legacy meter — energy + volume only, no temperature data" }, lastReading: { value: 482.1, unit: "MWh", date: "2026-02-24", receivedDate: "2026-02-24" } },
+  { id: "KAM-WA-090", type: "vand", unit: "m³", secondaryUnit: null, buildingId: "fsb-tingbjerg", supplierId: "hofor", status: "active", serialNumber: "KAM-2018-33090", installDate: "2018-09-01", readingFrequency: "daily", dataQuality: "high", dataSource: "kamstrup-ready", hasTemperatureData: false, statusDetail: null, lastReading: { value: 5120, unit: "m³", date: "2026-02-24", receivedDate: "2026-02-24" } },
+  { id: "KAM-EL-091", type: "el", unit: "MWh", secondaryUnit: null, buildingId: "fsb-tingbjerg", supplierId: "orsted", status: "error", serialNumber: "KAM-2018-33091", installDate: "2018-09-01", readingFrequency: "hourly", dataQuality: "low", dataSource: "eloverblik", hasTemperatureData: false, statusDetail: { da: "Checksumfejl på seneste 3 aflæsninger — afventer genvalidering", en: "Checksum error on last 3 readings — awaiting revalidation" }, lastReading: { value: 98.7, unit: "MWh", date: "2026-02-15", receivedDate: "2026-02-16" } },
   // AAB Amager Strand
-  { id: "KAM-DH-112", type: "fjernvarme", unit: "MWh", secondaryUnit: "m³", buildingId: "aab-amager", supplierId: "hofor", status: "active", serialNumber: "KAM-2022-77112", installDate: "2022-04-20", readingFrequency: "hourly", dataQuality: "high", lastReading: { value: 198.5, unit: "MWh", date: "2026-02-24" } },
-  { id: "KAM-WA-113", type: "vand", unit: "m³", secondaryUnit: null, buildingId: "aab-amager", supplierId: "hofor", status: "active", serialNumber: "KAM-2022-77113", installDate: "2022-04-20", readingFrequency: "daily", dataQuality: "high", lastReading: { value: 3210, unit: "m³", date: "2026-02-24" } },
-  { id: "KAM-EL-114", type: "el", unit: "MWh", secondaryUnit: null, buildingId: "aab-amager", supplierId: "orsted", status: "active", serialNumber: "KAM-2022-77114", installDate: "2022-04-20", readingFrequency: "hourly", dataQuality: "high", lastReading: { value: 45.2, unit: "MWh", date: "2026-02-24" } },
+  { id: "KAM-DH-112", type: "fjernvarme", unit: "MWh", secondaryUnit: "m³", buildingId: "aab-amager", supplierId: "hofor", status: "active", serialNumber: "KAM-2022-77112", installDate: "2022-04-20", readingFrequency: "hourly", dataQuality: "high", dataSource: "kamstrup-ready", hasTemperatureData: true, statusDetail: null, lastReading: { value: 198.5, unit: "MWh", date: "2026-02-24", receivedDate: "2026-02-24" } },
+  { id: "KAM-WA-113", type: "vand", unit: "m³", secondaryUnit: null, buildingId: "aab-amager", supplierId: "hofor", status: "active", serialNumber: "KAM-2022-77113", installDate: "2022-04-20", readingFrequency: "daily", dataQuality: "high", dataSource: "kamstrup-ready", hasTemperatureData: false, statusDetail: null, lastReading: { value: 3210, unit: "m³", date: "2026-02-24", receivedDate: "2026-02-24" } },
+  { id: "KAM-EL-114", type: "el", unit: "MWh", secondaryUnit: null, buildingId: "aab-amager", supplierId: "orsted", status: "active", serialNumber: "KAM-2022-77114", installDate: "2022-04-20", readingFrequency: "hourly", dataQuality: "high", dataSource: "eloverblik", hasTemperatureData: false, statusDetail: null, lastReading: { value: 45.2, unit: "MWh", date: "2026-02-23", receivedDate: "2026-02-24" } },
 ];
 
 /* ─── Buildings ─── */
@@ -77,6 +80,8 @@ export const buildings = [
     yearBuilt: 2008,
     buildingType: "Etagebolig",
     epc: "C",
+    epcCertifiedDate: "2020-03-15",
+    epcExpiresDate: "2030-03-15",
     units: 148,
     area: 8500,
     owner: "Boligforeningen Ørestad",
@@ -84,6 +89,7 @@ export const buildings = [
     status: "active",
     homiiOnboarded: "2024-01-01",
     homiiStatus: "Aktiv",
+    bbrLastUpdated: "2025-11-02",
   },
   {
     id: "ab-soendergaard",
@@ -94,6 +100,8 @@ export const buildings = [
     yearBuilt: 1962,
     buildingType: "Etagebolig",
     epc: "D",
+    epcCertifiedDate: "2018-06-22",
+    epcExpiresDate: "2028-06-22",
     units: 64,
     area: 3800,
     owner: "AB Søndergaard",
@@ -101,6 +109,7 @@ export const buildings = [
     status: "active",
     homiiOnboarded: "2024-06-01",
     homiiStatus: "Aktiv",
+    bbrLastUpdated: "2025-09-18",
   },
   {
     id: "fsb-tingbjerg",
@@ -111,6 +120,8 @@ export const buildings = [
     yearBuilt: 1955,
     buildingType: "Etagebolig",
     epc: "E",
+    epcCertifiedDate: "2016-01-10",
+    epcExpiresDate: "2026-01-10",
     units: 212,
     area: 14200,
     owner: "Boligselskabet Tingbjerg",
@@ -118,6 +129,7 @@ export const buildings = [
     status: "active",
     homiiOnboarded: "2023-01-01",
     homiiStatus: "Aktiv",
+    bbrLastUpdated: "2024-12-05",
   },
   {
     id: "aab-amager",
@@ -128,6 +140,8 @@ export const buildings = [
     yearBuilt: 2015,
     buildingType: "Etagebolig",
     epc: "B",
+    epcCertifiedDate: "2023-09-01",
+    epcExpiresDate: "2033-09-01",
     units: 96,
     area: 6200,
     owner: "Boligforeningen Amager Strand",
@@ -135,6 +149,7 @@ export const buildings = [
     status: "active",
     homiiOnboarded: "2025-01-01",
     homiiStatus: "Aktiv",
+    bbrLastUpdated: "2025-12-14",
   },
 ];
 

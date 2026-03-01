@@ -31,6 +31,9 @@ export const HOFOR = {
   korrektionPct: 0.008,
   energiprisPerMWh: 650,
   effektbetalingPerM2: 42,
+  tariffVersion: "Motivationstarif 2026",
+  tariffEffective: "2026-01-01",
+  tariffSource: "contract",
 };
 
 /* ═══════════════════════════════════════════════════════

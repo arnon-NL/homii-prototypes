@@ -101,6 +101,7 @@ function generateAllRecommendations(lang) {
       });
     }
 
+    /* Legionella — compliance & safety (separate from energy optimization) */
     if (hasFjernvarme) {
       const simReturnTemp = building.id === "aab-amager" ? 47 : building.id === "kab-orestad" ? 44 : 42;
       if (simReturnTemp > 43) {
@@ -108,7 +109,7 @@ function generateAllRecommendations(lang) {
         const savingKwh = overDeg * building.units * 365 * 0.15;
         recs.push({
           id: `legionella-opt-${building.id}`,
-          category: "legionella",
+          category: "compliance",
           priority: "low",
           titleKey: "recLegionellaTitle",
           descKey: "recLegionellaDesc",
@@ -272,11 +273,11 @@ function CategoryFilter({ category, count, savings, active, onClick, lang }) {
 function MethodologyPanel({ lang }) {
   const [open, setOpen] = useState(false);
   const methods = [
-    { titleKey: "methodTariffTitle", descKey: "methodTariffDesc", icon: Flame, color: "#EF4444" },
-    { titleKey: "methodEpcTitle", descKey: "methodEpcDesc", icon: Award, color: "#F59E0B" },
-    { titleKey: "methodLegionellaTitle", descKey: "methodLegionellaDesc", icon: Shield, color: "#3B82F6" },
-    { titleKey: "methodHeatingTitle", descKey: "methodHeatingDesc", icon: TrendingDown, color: "#22C55E" },
-    { titleKey: "methodSubmeteringTitle", descKey: "methodSubmeteringDesc", icon: Zap, color: "#8B5CF6" },
+    { titleKey: "methodTariffTitle", descKey: "methodTariffDesc", icon: Flame, color: "#EF4444", sourceTag: "Kamstrup READy + HOFOR" },
+    { titleKey: "methodEpcTitle", descKey: "methodEpcDesc", icon: Award, color: "#F59E0B", sourceTag: "Sparenergi / EMO" },
+    { titleKey: "methodLegionellaTitle", descKey: "methodLegionellaDesc", icon: Shield, color: "#3B82F6", sourceTag: "Kamstrup READy" },
+    { titleKey: "methodHeatingTitle", descKey: "methodHeatingDesc", icon: TrendingDown, color: "#22C55E", sourceTag: "DMI + Kamstrup READy" },
+    { titleKey: "methodSubmeteringTitle", descKey: "methodSubmeteringDesc", icon: Zap, color: "#8B5CF6", sourceTag: "Eloverblik" },
   ];
 
   return (
@@ -300,7 +301,12 @@ function MethodologyPanel({ lang }) {
                   <MIcon size={12} style={{ color: m.color }} />
                 </div>
                 <div>
-                  <p className="text-[12px] font-semibold" style={{ color: brand.navy }}>{t(m.titleKey, lang)}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[12px] font-semibold" style={{ color: brand.navy }}>{t(m.titleKey, lang)}</p>
+                    {m.sourceTag && (
+                      <span className="text-[9px] bg-slate-100 text-slate-400 rounded px-1.5 py-0.5 font-medium shrink-0">{m.sourceTag}</span>
+                    )}
+                  </div>
                   <p className="text-[11px] text-slate-500 leading-relaxed">{t(m.descKey, lang)}</p>
                 </div>
               </div>
@@ -490,6 +496,8 @@ export default function HomePage({ onNavigate }) {
               const bRecs = allRecs.filter(r => r.building.id === b.id);
               const bSaving = bRecs.reduce((s, r) => s + r.savingDKK, 0);
               const critCount = bRecs.filter(r => r.priority === "critical").length;
+              const issueMeters = bMeters.filter(m => m.status === "error" || m.status === "offline").length;
+              const allReporting = issueMeters === 0;
               return (
                 <Card
                   key={b.id}
@@ -506,6 +514,15 @@ export default function HomePage({ onNavigate }) {
                         {b.name}
                       </h3>
                       <p className="text-[11px] text-slate-400 truncate">{b.address}</p>
+                      {/* Data completeness indicator */}
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${allReporting ? "bg-emerald-400" : "bg-amber-400"}`} />
+                        <span className="text-[10px] text-slate-400">
+                          {allReporting
+                            ? t("allMetersReporting", lang)
+                            : `${issueMeters} ${t("metersWithIssues", lang)}`}
+                        </span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="inline-flex items-center justify-center w-6 h-6 rounded text-[10px] font-bold text-white"
