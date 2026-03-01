@@ -352,6 +352,18 @@ export const dict = {
   perYear:                   { da: "/år",                             en: "/year" },
   noTempData:                { da: "Ingen temp.data",                 en: "No temp. data" },
   estimatedFromVolume:       { da: "Estimeret fra volumen",           en: "Estimated from volume" },
+  searchMeters:              { da: "Søg målere...",                   en: "Search meters..." },
+  showingXofY:               { da: "Viser",                          en: "Showing" },
+  ofTotal:                   { da: "af",                             en: "of" },
+  showMore:                  { da: "Vis flere",                      en: "Show more" },
+  showLess:                  { da: "Vis færre",                      en: "Show fewer" },
+  selectAll:                 { da: "Vælg alle",                      en: "Select all" },
+  deselectAll:               { da: "Fravælg alle",                   en: "Deselect all" },
+  selectedMeters:            { da: "valgte målere",                  en: "selected meters" },
+  filterBySupplier:          { da: "Leverandør",                     en: "Supplier" },
+  allSuppliers:              { da: "Alle leverandører",              en: "All suppliers" },
+  meterAfkoelingDetail:      { da: "Afkøling — Målerdetalje",       en: "Afkøling — Meter Detail" },
+  meterAfkoelingDetailSub:   { da: "Afkølingsperformance for denne specifikke måler over tid", en: "Cooling performance for this specific meter over time" },
 
   // ── Savings methodology ──
   savingsMethodology:          { da: "Beregningsmetode",              en: "Calculation Method" },

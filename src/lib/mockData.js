@@ -214,6 +214,26 @@ export function getAfkoelingTimeSeries(meterId, weeks = 52) {
   });
 }
 
+/* Aggregate weekly series into monthly or yearly for portfolio chart */
+export function getAfkoelingAggregated(meterId, period = "weekly") {
+  const weekly = getAfkoelingTimeSeries(meterId, 52);
+  if (period === "weekly") return weekly;
+  if (period === "monthly") {
+    const months = [];
+    for (let m = 0; m < 12; m++) {
+      const start = Math.round(m * 4.33), end = Math.round((m + 1) * 4.33);
+      const slice = weekly.slice(start, end);
+      if (slice.length === 0) continue;
+      const avg = +(slice.reduce((s, d) => s + d.afkoeling, 0) / slice.length).toFixed(1);
+      months.push({ month: m + 1, afkoeling: avg });
+    }
+    return months;
+  }
+  // yearly — single point
+  const avg = +(weekly.reduce((s, d) => s + d.afkoeling, 0) / weekly.length).toFixed(1);
+  return [{ year: 2026, afkoeling: avg }];
+}
+
 /* Get all DH meters with their current afkøling summary */
 export function getDhMetersSummary() {
   return meters
