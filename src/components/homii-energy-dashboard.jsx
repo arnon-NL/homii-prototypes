@@ -1,4 +1,4 @@
-import React, { useState, useMemo, Fragment } from "react";
+import React, { useState, useMemo, useEffect, Fragment } from "react";
 import {
   BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, ReferenceLine, Area, ComposedChart, Cell,
@@ -626,6 +626,7 @@ export function CoolingReport({ navigate }) {
   const [supplierFilter, setSupplierFilter] = useState("hofor"); // default to HOFOR
   const [search, setSearch] = useState("");
   const [tableLimit, setTableLimit] = useState(15);
+  const [visibleMeterIds, setVisibleMeterIds] = useState(null); // null = "all" (auto-derived from filtered)
   const thr = AFKOELING_THRESHOLD;
 
   // All DH meter summaries
@@ -648,6 +649,19 @@ export function CoolingReport({ navigate }) {
 
   const sorted = useMemo(() => [...filtered].sort((a, b) => a.avgAfkoeling - b.avgAfkoeling), [filtered]);
 
+  // Visible meters for the chart (default = all filtered)
+  const allFilteredIds = useMemo(() => new Set(filtered.map(m => m.meterId)), [filtered]);
+  // Reset selection when filter changes
+  useEffect(() => { setVisibleMeterIds(null); }, [supplierFilter, search]);
+  const visibleSet = visibleMeterIds || allFilteredIds;
+  const toggleMeter = (id) => {
+    const current = new Set(visibleSet);
+    if (current.has(id)) current.delete(id); else current.add(id);
+    setVisibleMeterIds(current);
+  };
+  const selectAllMeters = () => setVisibleMeterIds(null);
+  const deselectAllMeters = () => setVisibleMeterIds(new Set());
+
   // Portfolio KPIs (based on filtered set)
   const portfolioAvg = filtered.length > 0 ? +(filtered.reduce((s, m) => s + m.avgAfkoeling, 0) / filtered.length).toFixed(1) : 0;
   const inBonus = filtered.filter(m => m.avgAfkoeling <= thr).length;
@@ -660,24 +674,24 @@ export function CoolingReport({ navigate }) {
   const deviation = portfolioAvg - thr;
   const correction = deviation * HOFOR.korrektionPct * HOFOR.energiprisPerMWh * annualMWh;
 
-  // Chart data: build aggregated series per meter for the selected period
+  // Chart data: build aggregated series per meter for the selected period, filtered by visible selection
   const chartData = useMemo(() => {
+    const vis = filtered.filter(m => visibleSet.has(m.meterId));
     if (period === "weekly") {
-      // Use raw weekly series — all meters share the same 1-52 week x-axis
-      return filtered.map(m => ({ ...m }));
+      return vis.map(m => ({ ...m }));
     }
     if (period === "monthly") {
-      return filtered.map(m => {
+      return vis.map(m => {
         const agg = getAfkoelingAggregated(m.meterId, "monthly");
         return { ...m, series: agg.map(d => ({ ...d, week: d.month })) };
       });
     }
     // yearly — single data point per meter, bar chart is better
-    return filtered.map(m => {
+    return vis.map(m => {
       const agg = getAfkoelingAggregated(m.meterId, "yearly");
       return { ...m, series: agg.map(d => ({ ...d, week: 1 })) };
     });
-  }, [filtered, period]);
+  }, [filtered, period, visibleSet]);
 
   // X-axis config per period
   const xAxisConfig = period === "weekly"
@@ -755,6 +769,33 @@ export function CoolingReport({ navigate }) {
           <Metric label={t("metersInSurcharge", lang)} value={inSurcharge} unit={`/ ${filtered.length}`} status={inSurcharge === 0 ? "good" : "bad"} />
         </div>
 
+        {/* Meter (de)selection chips */}
+        <div className="bg-white rounded-xl border border-slate-200 px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{t("selectedMeters", lang)} ({visibleSet.size} / {filtered.length})</span>
+            <div className="flex gap-2">
+              <button onClick={selectAllMeters} className="text-[11px] font-medium px-2 py-0.5 rounded hover:bg-slate-100 transition-colors" style={{ color: brand.blue }}>{t("selectAll", lang)}</button>
+              <button onClick={deselectAllMeters} className="text-[11px] font-medium px-2 py-0.5 rounded hover:bg-slate-100 transition-colors text-slate-400">{t("deselectAll", lang)}</button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {filtered.map((m, idx) => {
+              const active = visibleSet.has(m.meterId);
+              const color = LINE_COLORS[idx % LINE_COLORS.length];
+              return (
+                <button key={m.meterId} onClick={() => toggleMeter(m.meterId)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all ${active ? "border-transparent text-white shadow-sm" : "border-slate-200 text-slate-400 bg-white hover:bg-slate-50"}`}
+                  style={active ? { backgroundColor: color } : {}}
+                >
+                  <span className={`w-2 h-2 rounded-full border ${active ? "bg-white border-white/50" : "border-slate-300"}`} />
+                  {m.buildingName}
+                  <span className={`text-[10px] tabular-nums ${active ? "text-white/70" : "text-slate-300"}`}>{m.avgAfkoeling}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Portfolio afkøling chart — with period toggle */}
         <SectionCard title={t("afkoelingTrendTitle", lang)}>
           <p className="text-xs text-slate-400 mb-3">{t("afkoelingTrendSub", lang)}</p>
@@ -776,9 +817,9 @@ export function CoolingReport({ navigate }) {
               </ComposedChart>
             </ResponsiveContainer>
           ) : (
-            /* Yearly view — horizontal bar chart comparing meters */
-            <ResponsiveContainer width="100%" height={Math.max(180, filtered.length * 36 + 40)}>
-              <BarChart data={sorted.map(m => ({ name: m.buildingName, afkoeling: m.avgAfkoeling }))} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 120 }}>
+            /* Yearly view — horizontal bar chart comparing meters (filtered by visible selection) */
+            <ResponsiveContainer width="100%" height={Math.max(180, chartData.length * 36 + 40)}>
+              <BarChart data={chartData.map(m => ({ name: m.buildingName, afkoeling: m.avgAfkoeling }))} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 120 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 11, fill: brand.muted }} unit=" kWh/m³" axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: brand.navy }} width={110} axisLine={false} tickLine={false} />
@@ -786,7 +827,7 @@ export function CoolingReport({ navigate }) {
                 <ReferenceLine x={thr} stroke={brand.red} strokeDasharray="6 4" strokeWidth={1.5}
                   label={{ value: `${t("supplierThreshold", lang)}: ${thr}`, fill: brand.red, fontSize: 10, position: "top" }} />
                 <Bar dataKey="afkoeling" name={t("afkoelingLine", lang)} radius={[0, 3, 3, 0]}>
-                  {sorted.map((m, idx) => (
+                  {chartData.map((m, idx) => (
                     <Cell key={idx} fill={m.avgAfkoeling <= thr ? brand.green : brand.red} fillOpacity={0.7} />
                   ))}
                 </Bar>
