@@ -299,6 +299,13 @@ export const dict = {
   reportConsumptionTitle:  { da: "Forbrugsrapport",             en: "Consumption Report" },
   reportConsumptionDesc:   { da: "Samlet forbrugsanalyse for varme, vand og el på tværs af porteføljen", en: "Aggregated consumption analysis for heating, water and electricity across portfolio" },
   reportUpdated:           { da: "Senest opdateret",            en: "Last updated" },
+  reportGraddageTitle:     { da: "Graddage (GAF) Benchmark",    en: "Degree-Day (GAF) Benchmark" },
+  reportGraddageDesc:      { da: "Sammenlign graddagekorrigeret forbrug (GAF) over flere år for fjernvarmemålere", en: "Compare degree-day-adjusted consumption (GAF) across years for district heating meters" },
+  gafBenchmarkTitle:       { da: "GAF Forbrugsbenchmark",       en: "GAF Consumption Benchmark" },
+  gafBenchmarkSub:         { da: "Graddagekorrigeret forbrug — normaliseret for vejrforskelle", en: "Degree-day-adjusted consumption — normalized for weather differences" },
+  colderThanNormal:        { da: "Koldere end normalår",        en: "Colder than normal year" },
+  warmerThanNormal:        { da: "Varmere end normalår",        en: "Warmer than normal year" },
+  dhMetersCount:           { da: "Fjernvarmemålere",             en: "District Heating Meters" },
   portfolioOverview:       { da: "Porteføljeoversigt",          en: "Portfolio Overview" },
 
   // ── Temporal context ──

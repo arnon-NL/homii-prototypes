@@ -260,6 +260,56 @@ export function getDhMetersSummary() {
     });
 }
 
+/* ─── Degree Days (Graddage) ─── */
+export const GK = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
+export const GN = { Jan:480,Feb:410,Mar:340,Apr:210,Maj:100,Jun:30,Jul:8,Aug:15,Sep:80,Okt:230,Nov:360,Dec:460 };
+export const GNT = Object.values(GN).reduce((a,b)=>a+b,0);
+
+/** Portfolio-level graddage data: 5 years × 12 months */
+export function mkGraddage() {
+  const d=[];[2022,2023,2024,2025,2026].forEach(y=>{GK.forEach((m,mi)=>{const n=GN[m],f=0.85+Math.sin(y*7+mi*3)*0.15+Math.cos(y+mi*5)*0.08,a=Math.round(n*f),g=a>0?+(n/a).toFixed(3):1,ac=a*(4.2+Math.sin(y)*0.4)+Math.sin(y+mi)*30;d.push({year:y,mk:m,mi,ng:n,ag:a,guf:g,raw:+ac.toFixed(1),gaf:+(ac*g).toFixed(1)});});});return d;
+}
+
+/** Per-meter graddage data: multi-year GAF-adjusted consumption for a specific DH meter.
+ *  Returns { meterId, data: [{ year, month, monthIdx, raw, degreeDays, normalDegreeDays, guf, gaf }] }
+ */
+export function getGraddageForMeter(meterId) {
+  const m = meters.find(x => x.id === meterId);
+  if (!m || m.type !== "fjernvarme") return { meterId, data: [] };
+
+  const seed = m.id.split("").reduce((s, c) => s + c.charCodeAt(0), 0);
+  const r = (n) => Math.sin(seed * 137 + n * 31) * 0.5 + 0.5;
+  const bldg = buildings.find(b => b.id === m.buildingId);
+  const baseConsumption = m.lastReading.value || 200; // annual MWh baseline
+  const area = bldg?.area || 3000;
+
+  // Fjernvarme seasonal shape (same as MeterDetailPage)
+  const profile = [1.6, 1.5, 1.3, 0.8, 0.3, 0.1, 0.05, 0.05, 0.3, 0.9, 1.3, 1.6];
+  const profileSum = profile.reduce((s, v) => s + v, 0);
+
+  const data = [];
+  [2022, 2023, 2024, 2025, 2026].forEach(y => {
+    // Year-over-year consumption drift (newer buildings improve slightly)
+    const yearFactor = 1 + (y - 2024) * 0.02 + Math.sin(seed + y * 3) * 0.04;
+
+    GK.forEach((mk, mi) => {
+      const ng = GN[mk]; // normal degree days
+      const ddFactor = 0.85 + Math.sin(y * 7 + mi * 3) * 0.15 + Math.cos(y + mi * 5) * 0.08;
+      const ag = Math.round(ng * ddFactor); // actual degree days
+      const guf = ag > 0 ? +(ng / ag).toFixed(3) : 1;
+
+      // Raw consumption: proportional to seasonal profile + meter-specific noise
+      const monthShare = profile[mi] / profileSum;
+      const raw = +(baseConsumption * monthShare * yearFactor * (1 + r(y * 12 + mi) * 0.12)).toFixed(1);
+      const gaf = +(raw * guf).toFixed(1);
+
+      data.push({ year: y, month: mk, monthIdx: mi, raw, degreeDays: ag, normalDegreeDays: ng, guf, gaf });
+    });
+  });
+
+  return { meterId, data };
+}
+
 /* ─── Billing Cycles ─── */
 export const billingCycles = [
   { id: "2025-2026", label: "2025/2026", start: "2025-07-01", end: "2026-06-30", active: true },

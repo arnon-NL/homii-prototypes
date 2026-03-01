@@ -1,10 +1,10 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, Thermometer } from "lucide-react";
+import { ArrowLeft, ArrowRight, Thermometer, Flame } from "lucide-react";
 import { brand } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
-import { CoolingReport } from "./homii-energy-dashboard";
+import { CoolingReport, GraddageReport } from "./homii-energy-dashboard";
 import { TimePeriodLabel } from "@/components/ui/info-tooltip";
 import Breadcrumbs from "./Breadcrumbs";
 
@@ -15,6 +15,14 @@ const reports = [
     color: brand.blue,
     titleKey: "reportCoolingTitle",
     descKey: "reportCoolingDesc",
+    updatedKey: "reportUpdated",
+  },
+  {
+    id: "graddage",
+    icon: Flame,
+    color: "#EF4444",
+    titleKey: "reportGraddageTitle",
+    descKey: "reportGraddageDesc",
     updatedKey: "reportUpdated",
   },
 ];
@@ -46,6 +54,7 @@ export default function ReportsPage() {
             </button>
           </div>
           {reportId === "cooling" && <CoolingReport navigate={navigate} />}
+          {reportId === "graddage" && <GraddageReport navigate={navigate} />}
         </div>
       </div>
     );

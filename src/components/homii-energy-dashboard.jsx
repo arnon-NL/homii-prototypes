@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 
 import { brand, yearColor, HOFOR, Icon } from "@/lib/brand";
 import { useLang, t, MS, ML } from "@/lib/i18n";
-import { meters as allMeters, buildings, getBuilding, suppliers, getDhMetersSummary, getAfkoelingTimeSeries, getAfkoelingAggregated } from "@/lib/mockData";
+import { meters as allMeters, buildings, getBuilding, suppliers, getDhMetersSummary, getAfkoelingTimeSeries, getAfkoelingAggregated, getGraddageForMeter, GK, GN, GNT } from "@/lib/mockData";
 
 /* ═══════════════════════════════════════════════════════
    Custom SegmentedControl (Notion-style)
@@ -39,10 +39,6 @@ function SegmentedControl({ value, onChange, options, size = "sm" }) {
 /* ═══════════════════════════════════════════════════════
    Mock data generators
    ═══════════════════════════════════════════════════════ */
-const GK = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Aug","Sep","Okt","Nov","Dec"];
-const GN = { Jan:480,Feb:410,Mar:340,Apr:210,Maj:100,Jun:30,Jul:8,Aug:15,Sep:80,Okt:230,Nov:360,Dec:460 };
-const GNT = Object.values(GN).reduce((a,b)=>a+b,0);
-
 /* HOFOR Afkøling threshold — configurable per zone */
 const AFKOELING_THRESHOLD = HOFOR.standard.krav; // 30 kWh/m³
 
@@ -62,10 +58,6 @@ function mkCooling(period, meter, lang) {
   if (period==="weekly") return Array.from({length:52},(_,n)=>{const m=Math.floor(n/4.33),w=m<3||m>9;const s=w?78+r(n)*8:68+r(n)*6,rt=w?42+r(n+100)*12:35+r(n+100)*10,v=w?45+r(n+200)*30:15+r(n+200)*15;return mkRow(`${wk} ${n+1}`,s,rt,v,n);});
   if (period==="monthly") return MS[lang].map((m,n)=>{const w=n<3||n>9;const s=w?80+r(n)*6:70+r(n)*5,rt=w?44+r(n+50)*10:36+r(n+50)*8,v=w?190+r(n+100)*80:60+r(n+100)*50;return mkRow(m,s,rt,v,n);});
   return Array.from({length:5},(_,n)=>{const y=2022+n,s=75+r(n)*5,rt=40+r(n+50)*8,v=1500+r(n+100)*600;return mkRow(`${y}`,s,rt,v,n);});
-}
-
-function mkGraddage() {
-  const d=[];[2022,2023,2024,2025,2026].forEach(y=>{GK.forEach((m,mi)=>{const n=GN[m],f=0.85+Math.sin(y*7+mi*3)*0.15+Math.cos(y+mi*5)*0.08,a=Math.round(n*f),g=a>0?+(n/a).toFixed(3):1,ac=a*(4.2+Math.sin(y)*0.4)+Math.sin(y+mi)*30;d.push({year:y,mk:m,mi,ng:n,ag:a,guf:g,raw:+ac.toFixed(1),gaf:+(ac*g).toFixed(1)});});});return d;
 }
 
 function mkBar(lang) {
@@ -278,21 +270,6 @@ function ConsumptionDash() {
     return [2022,2023,2024,2025,2026].filter(y=>vis.includes(y)).map(y=>({name:`${y}`,value:barData[cmpM]?.[`h${y}`]||0,fill:yearColor[y]}));
   }, [cmp,cmpM,vis,barData]);
 
-  // Degree Days state
-  const [ddView, setDdView] = useState("monthly");
-  const ddAll = useMemo(mkGraddage, []);
-
-  const ddMv = useMemo(() => ms.map((m,mi) => {
-    const e = { name: m, ng: GN[GK[mi]] };
-    vis.forEach(y => { const r = ddAll.find(d=>d.year===y&&d.mi===mi); if(r){e[`a${y}`]=r.ag;e[`g${y}`]=r.gaf;e[`r${y}`]=r.raw;e[`u${y}`]=r.guf;} });
-    return e;
-  }), [ddAll, vis, ms]);
-
-  const ddYt = useMemo(() => [2022,2023,2024,2025,2026].map(y => {
-    const rows = ddAll.filter(d=>d.year===y);
-    return { name:`${y}`, ag:rows.reduce((s,r)=>s+r.ag,0), ng:GNT, guf:+(GNT/rows.reduce((s,r)=>s+r.ag,0)).toFixed(3), raw:+rows.reduce((s,r)=>s+r.raw,0).toFixed(0), gaf:+rows.reduce((s,r)=>s+r.gaf,0).toFixed(0) };
-  }), [ddAll]);
-
   const meters = [
     {id:"all",      l:t("allMeters",lang)},
     {id:"meter-001",l:t("blockA",lang)},
@@ -447,62 +424,6 @@ function ConsumptionDash() {
         </SectionCard>
       </div>
 
-      <div className="h-px bg-slate-200" />
-
-      {/* — Section: Degree Days (GUF & GAF) — */}
-      <div className="space-y-4">
-        <SectionHeader title={t("graddageTitle",lang)} description={t("graddageSub",lang)}>
-          <SegmentedControl value={ddView} onChange={v=>v&&setDdView(v)} options={[
-            {value:"monthly", label:t("monthly",lang)},
-            {value:"yearly", label:t("yearlyTotal",lang)},
-          ]} />
-        </SectionHeader>
-
-        {ddView==="yearly" && (
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            {ddYt.filter(x=>vis.includes(+x.name)).map(x=>(
-              <Metric key={x.name} label={`GAF ${x.name}`} value={x.gaf.toLocaleString(lang==="da"?"da-DK":"en-US")} unit="MWh"
-                sub={`GUF: ${x.guf} | ${t("raw",lang)}: ${x.raw.toLocaleString(lang==="da"?"da-DK":"en-US")} MWh`} />
-            ))}
-          </div>
-        )}
-
-        <SectionCard title={ddView==="monthly"?t("gafMonthly",lang):t("gafYearly",lang)}>
-          <ResponsiveContainer width="100%" height={280}>
-            {ddView==="monthly" ? (
-              <BarChart data={ddMv} margin={{top:5,right:20,bottom:5,left:0}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-                <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false} />
-                <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
-                {vis.map(y=><Bar key={y} dataKey={`g${y}`} name={`GAF ${y}`} fill={yearColor[y]} radius={[3,3,0,0]}/>)}
-              </BarChart>
-            ) : (
-              <BarChart data={ddYt.filter(x=>vis.includes(+x.name))} margin={{top:5,right:20,bottom:5,left:0}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-                <YAxis tick={{fontSize:11, fill:brand.muted}} unit=" MWh" axisLine={false} tickLine={false} />
-                <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
-                <Bar dataKey="raw" name={t("rawCons",lang)} fill="#CBD5E1" radius={[3,3,0,0]}/>
-                <Bar dataKey="gaf" name={t("gafAdj",lang)} fill={brand.blue} radius={[3,3,0,0]}/>
-              </BarChart>
-            )}
-          </ResponsiveContainer>
-        </SectionCard>
-
-        <SectionCard title={t("ddVsNormal",lang)}>
-          <ResponsiveContainer width="100%" height={220}>
-            <ComposedChart data={ddMv} margin={{top:5,right:20,bottom:5,left:0}}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-              <XAxis dataKey="name" tick={{fontSize:11, fill:brand.muted}} axisLine={{stroke:brand.border}} tickLine={false} />
-              <YAxis tick={{fontSize:11, fill:brand.muted}} axisLine={false} tickLine={false} />
-              <Tooltip content={<BrandTooltip/>}/><Legend wrapperStyle={{fontSize:11}} iconType="circle" iconSize={8} />
-              <Line type="monotone" dataKey="ng" stroke={brand.red} strokeWidth={1.5} strokeDasharray="6 4" dot={false} name={t("normalYear",lang)}/>
-              {vis.map(y=><Line key={y} type="monotone" dataKey={`a${y}`} stroke={yearColor[y]} strokeWidth={1.5} dot={{r:2}} name={`${t("actual",lang)} ${y}`}/>)}
-            </ComposedChart>
-          </ResponsiveContainer>
-        </SectionCard>
-      </div>
     </div>
   );
 }
@@ -1040,6 +961,260 @@ export function CoolingReport({ navigate }) {
               <td className="px-4 py-2 text-sm text-right tabular-nums">{r.mwh}</td>
             </tr>
           ))}
+        />
+      </SectionCard>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   Graddage (GAF) Portfolio Report
+   ═══════════════════════════════════════════════════════ */
+export function GraddageReport({ navigate }) {
+  const lang = useLang();
+  const [supplierFilter, setSupplierFilter] = useState("hofor");
+  const [search, setSearch] = useState("");
+  const [vis, setVis] = useState([2024, 2025, 2026]);
+  const [period, setPeriod] = useState("monthly");
+  const [visibleMeterIds, setVisibleMeterIds] = useState(null);
+
+  const tog = y => setVis(p => p.includes(y) ? p.filter(x => x !== y) : [...p, y]);
+
+  // DH meters only
+  const dhMeters = useMemo(() => allMeters.filter(m => m.type === "fjernvarme"), []);
+  const dhSupplierIds = [...new Set(dhMeters.map(m => {
+    const bldg = buildings.find(b => b.id === m.buildingId);
+    return bldg?.supplierId;
+  }).filter(Boolean))];
+  const dhSuppliers = dhSupplierIds.map(id => suppliers.find(s => s.id === id)).filter(Boolean);
+
+  // Filtered meters
+  const filtered = useMemo(() => {
+    let list = dhMeters.map(m => {
+      const bldg = buildings.find(b => b.id === m.buildingId);
+      return { ...m, buildingName: bldg?.name || "", supplierId: bldg?.supplierId, area: bldg?.area || 0 };
+    });
+    if (supplierFilter !== "all") list = list.filter(m => m.supplierId === supplierFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(m => m.id.toLowerCase().includes(q) || m.buildingName.toLowerCase().includes(q));
+    }
+    return list;
+  }, [dhMeters, supplierFilter, search]);
+
+  // Graddage data per meter
+  const graddageData = useMemo(() => filtered.map(m => ({
+    ...m,
+    gd: getGraddageForMeter(m.id),
+  })), [filtered]);
+
+  // Visible meter selection
+  const allFilteredIds = useMemo(() => new Set(filtered.map(m => m.id)), [filtered]);
+  useEffect(() => { setVisibleMeterIds(null); }, [supplierFilter, search]);
+  const visibleSet = visibleMeterIds || allFilteredIds;
+  const toggleMeter = (id) => {
+    const current = new Set(visibleSet);
+    if (current.has(id)) current.delete(id); else current.add(id);
+    setVisibleMeterIds(current);
+  };
+
+  // Portfolio-level aggregated GAF data for visible meters
+  const portfolioMonthly = useMemo(() => {
+    const visMeters = graddageData.filter(m => visibleSet.has(m.id));
+    return GK.map((mk, mi) => {
+      const row = { name: mk, ng: GN[mk] };
+      vis.forEach(y => {
+        let totalRaw = 0, totalGaf = 0, totalDd = 0, count = 0;
+        visMeters.forEach(m => {
+          const pt = m.gd.data.find(d => d.year === y && d.monthIdx === mi);
+          if (pt) { totalRaw += pt.raw; totalGaf += pt.gaf; totalDd += pt.degreeDays; count++; }
+        });
+        row[`r${y}`] = +totalRaw.toFixed(1);
+        row[`g${y}`] = +totalGaf.toFixed(1);
+        row[`a${y}`] = count > 0 ? Math.round(totalDd / count) : 0;
+      });
+      return row;
+    });
+  }, [graddageData, vis, visibleSet]);
+
+  // Portfolio yearly totals
+  const portfolioYearly = useMemo(() => {
+    const visMeters = graddageData.filter(m => visibleSet.has(m.id));
+    return [2022, 2023, 2024, 2025, 2026].map(y => {
+      let totalRaw = 0, totalGaf = 0, totalDd = 0, count = 0;
+      visMeters.forEach(m => {
+        const yData = m.gd.data.filter(d => d.year === y);
+        totalRaw += yData.reduce((s, d) => s + d.raw, 0);
+        totalGaf += yData.reduce((s, d) => s + d.gaf, 0);
+        totalDd += yData.reduce((s, d) => s + d.degreeDays, 0);
+        if (yData.length > 0) count++;
+      });
+      const avgGuf = totalDd > 0 ? +(GNT / (totalDd / (count || 1))).toFixed(3) : 1;
+      return { name: `${y}`, raw: +totalRaw.toFixed(0), gaf: +totalGaf.toFixed(0), dd: Math.round(totalDd / (count || 1)), guf: avgGuf };
+    });
+  }, [graddageData, vis, visibleSet]);
+
+  // KPIs for current year
+  const currentYear = portfolioYearly.find(y => y.name === "2026") || { raw: 0, gaf: 0, dd: 0, guf: 1 };
+
+  // Table: per-meter yearly summary for visible years
+  const tableData = useMemo(() => graddageData.map(m => {
+    const yearly = vis.map(y => {
+      const yData = m.gd.data.filter(d => d.year === y);
+      const raw = yData.reduce((s, d) => s + d.raw, 0);
+      const gaf = yData.reduce((s, d) => s + d.gaf, 0);
+      const dd = yData.reduce((s, d) => s + d.degreeDays, 0);
+      const guf = dd > 0 ? +(GNT / dd).toFixed(3) : 1;
+      return { year: y, raw: +raw.toFixed(0), gaf: +gaf.toFixed(0), guf, deviation: raw > 0 ? +(((gaf - raw) / raw) * 100).toFixed(1) : 0 };
+    });
+    return { ...m, yearly };
+  }), [graddageData, vis]);
+
+  // Meter colors for chart lines
+  const COLORS = [brand.blue, brand.midBlue, brand.amber, brand.green, "#8B5CF6", "#EC4899", "#14B8A6", "#F97316", "#6366F1", "#84CC16"];
+
+  return (
+    <div className="space-y-6">
+      {/* Header & filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="text-lg font-semibold" style={{ color: brand.navy }}>{t("reportGraddageTitle", lang)}</h2>
+        <div className="flex items-center gap-1.5 ml-auto">
+          {dhSuppliers.length > 1 && (
+            <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("allSuppliers", lang)}</SelectItem>
+                {dhSuppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <input
+            type="text" placeholder={t("searchMeter", lang)} value={search} onChange={e => setSearch(e.target.value)}
+            className="h-8 w-[180px] rounded-md border border-slate-200 px-2.5 text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#3EB1C8]"
+          />
+        </div>
+      </div>
+
+      {/* Year pills + period toggle */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1 rounded-full bg-slate-100 p-0.5">
+          {[2022, 2023, 2024, 2025, 2026].map(y => (
+            <button key={y} onClick={() => tog(y)}
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all duration-200 ${vis.includes(y) ? "text-white shadow-sm" : "text-slate-500 bg-transparent hover:bg-slate-100"}`}
+              style={vis.includes(y) ? { background: yearColor[y] } : {}}>
+              {y}
+            </button>
+          ))}
+        </div>
+        <SegmentedControl value={period} onChange={v => v && setPeriod(v)} options={[
+          { value: "monthly", label: t("monthly", lang) },
+          { value: "yearly", label: t("yearlyTotal", lang) },
+        ]} />
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Metric label={`${t("gafAdj", lang)} 2026`} value={currentYear.gaf.toLocaleString(lang === "da" ? "da-DK" : "en-US")} unit="MWh" sub={`${t("rawCons", lang)}: ${currentYear.raw.toLocaleString(lang === "da" ? "da-DK" : "en-US")} MWh`} />
+        <Metric label={t("degreeDays", lang) + " 2026"} value={currentYear.dd.toLocaleString(lang === "da" ? "da-DK" : "en-US")} sub={`${t("normalYear", lang)}: ${GNT.toLocaleString(lang === "da" ? "da-DK" : "en-US")}`} />
+        <Metric label="GUF 2026" value={currentYear.guf.toFixed(3)} sub={currentYear.guf > 1 ? `${t("colderThanNormal", lang)}` : `${t("warmerThanNormal", lang)}`} />
+        <Metric label={t("dhMetersCount", lang)} value={`${filtered.length}`} sub={`${visibleSet.size} ${t("selected", lang)}`} />
+      </div>
+
+      {/* Meter chips */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button onClick={() => visibleMeterIds ? setVisibleMeterIds(null) : setVisibleMeterIds(new Set())}
+          className="text-[10px] text-slate-400 hover:text-slate-600 mr-1">
+          {visibleMeterIds ? t("selectAll", lang) : t("deselectAll", lang)}
+        </button>
+        {filtered.map((m, idx) => {
+          const on = visibleSet.has(m.id);
+          const col = COLORS[idx % COLORS.length];
+          return (
+            <button key={m.id} onClick={() => toggleMeter(m.id)}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition-all border ${on ? "text-white border-transparent shadow-sm" : "bg-white border-slate-200 text-slate-400 hover:border-slate-300"}`}
+              style={on ? { background: col } : {}}>
+              {m.id}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* GAF Chart */}
+      <SectionCard title={period === "monthly" ? t("gafMonthly", lang) : t("gafYearly", lang)}>
+        <ResponsiveContainer width="100%" height={300}>
+          {period === "monthly" ? (
+            <BarChart data={portfolioMonthly} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" MWh" axisLine={false} tickLine={false} />
+              <Tooltip content={<BrandTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+              {vis.map(y => <Bar key={y} dataKey={`g${y}`} name={`GAF ${y}`} fill={yearColor[y]} radius={[3, 3, 0, 0]} />)}
+            </BarChart>
+          ) : (
+            <BarChart data={portfolioYearly.filter(x => vis.includes(+x.name))} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" MWh" axisLine={false} tickLine={false} />
+              <Tooltip content={<BrandTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+              <Bar dataKey="raw" name={t("rawCons", lang)} fill="#CBD5E1" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="gaf" name={t("gafAdj", lang)} fill={brand.blue} radius={[3, 3, 0, 0]} />
+            </BarChart>
+          )}
+        </ResponsiveContainer>
+      </SectionCard>
+
+      {/* Degree Days vs Normal Year */}
+      <SectionCard title={t("ddVsNormal", lang)}>
+        <ResponsiveContainer width="100%" height={220}>
+          <ComposedChart data={portfolioMonthly} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: brand.muted }} axisLine={false} tickLine={false} />
+            <Tooltip content={<BrandTooltip />} />
+            <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+            <Line type="monotone" dataKey="ng" stroke={brand.red} strokeWidth={1.5} strokeDasharray="6 4" dot={false} name={t("normalYear", lang)} />
+            {vis.map(y => <Line key={y} type="monotone" dataKey={`a${y}`} stroke={yearColor[y]} strokeWidth={1.5} dot={{ r: 2 }} name={`${t("actual", lang)} ${y}`} />)}
+          </ComposedChart>
+        </ResponsiveContainer>
+      </SectionCard>
+
+      {/* Meter comparison table */}
+      <SectionCard title={t("meterComparison", lang)}>
+        <DataTable
+          className="text-xs"
+          head={
+            <tr className="text-[11px]" style={{ color: brand.muted }}>
+              <th className="px-4 py-2.5 text-left font-medium">{t("meter", lang)}</th>
+              <th className="px-4 py-2.5 text-left font-medium">{t("building", lang)}</th>
+              {vis.map(y => (
+                <Fragment key={y}>
+                  <th className="px-4 py-2.5 text-right font-medium">{t("rawCons", lang)} {y}</th>
+                  <th className="px-4 py-2.5 text-right font-medium">GAF {y}</th>
+                  <th className="px-4 py-2.5 text-right font-medium">GUF {y}</th>
+                </Fragment>
+              ))}
+            </tr>
+          }
+          body={
+            <>
+              {tableData.map((m, idx) => (
+                <tr key={m.id} className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
+                  onClick={() => navigate(`/meter/${m.id}`)}>
+                  <td className="px-4 py-2 text-sm font-medium" style={{ color: brand.navy }}>{m.id}</td>
+                  <td className="px-4 py-2 text-sm text-slate-500">{m.buildingName}</td>
+                  {m.yearly.filter(yd => vis.includes(yd.year)).map(yd => (
+                    <Fragment key={yd.year}>
+                      <td className="px-4 py-2 text-sm text-right tabular-nums">{yd.raw.toLocaleString(lang === "da" ? "da-DK" : "en-US")}</td>
+                      <td className="px-4 py-2 text-sm text-right tabular-nums font-medium" style={{ color: brand.blue }}>{yd.gaf.toLocaleString(lang === "da" ? "da-DK" : "en-US")}</td>
+                      <td className="px-4 py-2 text-sm text-right tabular-nums">{yd.guf}</td>
+                    </Fragment>
+                  ))}
+                </tr>
+              ))}
+            </>
+          }
         />
       </SectionCard>
     </div>

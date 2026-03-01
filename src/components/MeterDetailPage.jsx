@@ -6,7 +6,8 @@ import { Flame, Droplets, Zap, Activity, ChevronRight, AlertCircle, Radio, Clock
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend, ReferenceLine } from "recharts";
 import { brand, EPC_COLORS, HOFOR } from "@/lib/brand";
 import { t, useLang, MS, ML } from "@/lib/i18n";
-import { getMeter, getBuilding, getSupplier, meters, billingCycles } from "@/lib/mockData";
+import { getMeter, getBuilding, getSupplier, meters, billingCycles, getGraddageForMeter, GK, GN, GNT } from "@/lib/mockData";
+import { yearColor } from "@/lib/brand";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AttributePanel, AttrSection, AttrRow, AttrLink } from "@/components/ui/attribute-panel";
 import { InfoTooltip, TimePeriodLabel } from "@/components/ui/info-tooltip";
@@ -168,6 +169,148 @@ const TempTooltip = ({ active, payload, label }) => {
     </div>
   );
 };
+
+/* ═══════════════════════════════════════════════════════
+   GAF Benchmark — degree-day-adjusted consumption (DH only)
+   ═══════════════════════════════════════════════════════ */
+const YearPill = ({ year, active, onClick }) => (
+  <button onClick={onClick}
+    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium transition-all duration-200 ${active ? "text-white shadow-sm" : "text-slate-500 bg-transparent hover:bg-slate-100"}`}
+    style={active ? { background: yearColor[year] } : {}}>
+    {year}
+  </button>
+);
+
+function GafBenchmark({ meter, lang }) {
+  const ms = MS[lang];
+  const [gafVis, setGafVis] = useState([2024, 2025, 2026]);
+  const [gafView, setGafView] = useState("monthly");
+
+  const togYear = (y) => setGafVis(p => p.includes(y) ? p.filter(x => x !== y) : [...p, y]);
+
+  // Per-meter graddage data
+  const graddage = useMemo(() => getGraddageForMeter(meter.id), [meter.id]);
+  const hasData = graddage.data.length > 0;
+
+  // Monthly pivot: [{name:"Jan", g2024:..., g2025:..., r2024:..., ng:480, a2024:...}]
+  const monthlyChart = useMemo(() => {
+    if (!hasData) return [];
+    return ms.map((m, mi) => {
+      const e = { name: m, ng: GN[GK[mi]] };
+      gafVis.forEach(y => {
+        const row = graddage.data.find(d => d.year === y && d.monthIdx === mi);
+        if (row) {
+          e[`g${y}`] = row.gaf;
+          e[`r${y}`] = row.raw;
+          e[`a${y}`] = row.degreeDays;
+          e[`u${y}`] = row.guf;
+        }
+      });
+      return e;
+    });
+  }, [graddage, gafVis, ms, hasData]);
+
+  // Yearly totals
+  const yearlyTotals = useMemo(() => {
+    if (!hasData) return [];
+    return [2022, 2023, 2024, 2025, 2026].map(y => {
+      const rows = graddage.data.filter(d => d.year === y);
+      if (rows.length === 0) return null;
+      return {
+        name: `${y}`,
+        raw: +rows.reduce((s, r) => s + r.raw, 0).toFixed(0),
+        gaf: +rows.reduce((s, r) => s + r.gaf, 0).toFixed(0),
+        ag: rows.reduce((s, r) => s + r.degreeDays, 0),
+        guf: +(GNT / rows.reduce((s, r) => s + r.degreeDays, 0)).toFixed(3),
+      };
+    }).filter(Boolean);
+  }, [graddage, hasData]);
+
+  // Current year info
+  const currentYearData = yearlyTotals.find(y => y.name === "2026");
+
+  if (!hasData) return null;
+
+  return (
+    <Card>
+      <CardContent className="p-5 space-y-4">
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-[13px] font-semibold" style={{ color: brand.navy }}>{t("gafBenchmarkTitle", lang)}</h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">{t("gafBenchmarkSub", lang)}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1">
+              {[2022, 2023, 2024, 2025, 2026].map(y => <YearPill key={y} year={y} active={gafVis.includes(y)} onClick={() => togYear(y)} />)}
+            </div>
+            <span className="w-px h-5 bg-slate-200" />
+            <div className="flex rounded-lg border border-slate-200 overflow-hidden">
+              {[{ v: "monthly", l: t("monthly", lang) }, { v: "yearly", l: t("yearlyTotal", lang) }].map(o => (
+                <button key={o.v} onClick={() => setGafView(o.v)}
+                  className={`px-2.5 py-1 text-[11px] font-medium transition-colors ${gafView === o.v ? "bg-slate-100 text-slate-700" : "text-slate-400 hover:text-slate-600"}`}>
+                  {o.l}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* GUF info row */}
+        {currentYearData && (
+          <div className="flex items-center gap-4 px-3 py-2 bg-slate-50 rounded-lg text-[11px] text-slate-500">
+            <span>GUF 2026: <strong className="text-slate-700">{currentYearData.guf}</strong></span>
+            <span className="w-px h-3 bg-slate-200" />
+            <span>{t("degreeDays", lang)} 2026: <strong className="text-slate-700">{currentYearData.ag.toLocaleString()}</strong></span>
+            <span className="text-slate-300">({t("normalYear", lang)}: {GNT.toLocaleString()})</span>
+          </div>
+        )}
+
+        {/* GAF chart */}
+        {gafView === "monthly" ? (
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={monthlyChart} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" MWh" axisLine={false} tickLine={false} />
+              <Tooltip content={<BrandTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+              {gafVis.map(y => <Bar key={y} dataKey={`g${y}`} name={`GAF ${y}`} fill={yearColor[y]} radius={[3, 3, 0, 0]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={yearlyTotals.filter(x => gafVis.includes(+x.name))} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: brand.muted }} unit=" MWh" axisLine={false} tickLine={false} />
+              <Tooltip content={<BrandTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+              <Bar dataKey="raw" name={t("rawCons", lang)} fill="#CBD5E1" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="gaf" name={t("gafAdj", lang)} fill={brand.blue} radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+
+        {/* Degree Days vs Normal Year */}
+        <div className="border-t border-slate-100 pt-4">
+          <h4 className="text-[12px] font-semibold text-slate-500 mb-2">{t("ddVsNormal", lang)}</h4>
+          <ResponsiveContainer width="100%" height={180}>
+            <ComposedChart data={monthlyChart} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: brand.muted }} axisLine={{ stroke: brand.border }} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: brand.muted }} axisLine={false} tickLine={false} />
+              <Tooltip content={<BrandTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+              <Line type="monotone" dataKey="ng" stroke={brand.red} strokeWidth={1.5} strokeDasharray="6 4" dot={false} name={t("normalYear", lang)} />
+              {gafVis.map(y => <Line key={y} type="monotone" dataKey={`a${y}`} stroke={yearColor[y]} strokeWidth={1.5} dot={{ r: 2 }} name={`${t("actual", lang)} ${y}`} />)}
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 /* ═══════════════════════════════════════════════════════
    Component
@@ -490,6 +633,9 @@ export default function MeterDetailPage() {
                       </CardContent>
                     </Card>
                   )}
+
+                  {/* ── GAF Consumption Benchmark (DH meters only) ── */}
+                  {meter.type === "fjernvarme" && <GafBenchmark meter={meter} lang={lang} />}
                 </div>
               </TabsContent>
 
