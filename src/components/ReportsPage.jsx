@@ -1,10 +1,10 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, ArrowRight, Thermometer, Shield, BarChart3, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Thermometer } from "lucide-react";
 import { brand } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
-import { CoolingReport, LegionellaReport } from "./homii-energy-dashboard";
+import { CoolingReport } from "./homii-energy-dashboard";
 import { TimePeriodLabel } from "@/components/ui/info-tooltip";
 import Breadcrumbs from "./Breadcrumbs";
 
@@ -15,30 +15,6 @@ const reports = [
     color: brand.blue,
     titleKey: "reportCoolingTitle",
     descKey: "reportCoolingDesc",
-    updatedKey: "reportUpdated",
-  },
-  {
-    id: "legionella",
-    icon: Shield,
-    color: brand.amber,
-    titleKey: "reportLegionellaTitle",
-    descKey: "reportLegionellaDesc",
-    updatedKey: "reportUpdated",
-  },
-  {
-    id: "epc",
-    icon: BarChart3,
-    color: "#22C55E",
-    titleKey: "reportEpcTitle",
-    descKey: "reportEpcDesc",
-    updatedKey: "reportUpdated",
-  },
-  {
-    id: "consumption",
-    icon: Zap,
-    color: "#F59E0B",
-    titleKey: "reportConsumptionTitle",
-    descKey: "reportConsumptionDesc",
     updatedKey: "reportUpdated",
   },
 ];
@@ -70,25 +46,6 @@ export default function ReportsPage() {
             </button>
           </div>
           {reportId === "cooling" && <CoolingReport navigate={navigate} />}
-          {reportId === "legionella" && <LegionellaReport navigate={navigate} />}
-          {reportId === "epc" && (
-            <div className="space-y-4">
-              <div className="text-center py-12 text-slate-400">
-                <BarChart3 size={40} className="mx-auto mb-3 text-slate-300" />
-                <p className="text-sm font-medium" style={{ color: brand.navy }}>{t("reportEpcTitle", lang)}</p>
-                <p className="text-xs text-slate-400 mt-1">{t("portfolioOverview", lang)}</p>
-              </div>
-            </div>
-          )}
-          {reportId === "consumption" && (
-            <div className="space-y-4">
-              <div className="text-center py-12 text-slate-400">
-                <Zap size={40} className="mx-auto mb-3 text-slate-300" />
-                <p className="text-sm font-medium" style={{ color: brand.navy }}>{t("reportConsumptionTitle", lang)}</p>
-                <p className="text-xs text-slate-400 mt-1">{t("portfolioOverview", lang)}</p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );
