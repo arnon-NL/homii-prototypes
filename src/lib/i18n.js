@@ -471,9 +471,11 @@ export const dict = {
   srcKamstrupReady:        { da: "Kamstrup READy",                    en: "Kamstrup READy" },
   srcKamstrupReadyDesc:    { da: "IoT-platform for fjernvarme- og vandmålere", en: "IoT platform for district heating and water meters" },
   srcEpcEnergistyrelsen:   { da: "Energimærkningsordningen (EMO)",    en: "Energy Performance Certificates (EMO)" },
-  srcEpcEnergistyrelsenDesc: { da: "Offentligt tilgængelige energimærkningsdata fra Energistyrelsen", en: "Publicly available building energy performance data from the Danish Energy Agency" },
+  srcEpcEnergistyrelsenDesc: { da: "Offentligt tilgængelige energimærkningsdata via Sparenergi.dk / EMO", en: "Publicly available building energy performance data via Sparenergi.dk / EMO" },
+  srcBbr:                  { da: "BBR (Bygnings- og Boligregistret)",  en: "BBR (Building and Dwelling Register)" },
+  srcBbrDesc:              { da: "Offentligt register med stamdata — adresse, opførelsesår, bygningstype, areal", en: "Public register with master data — address, year built, building type, area" },
   srcHousingCorp:          { da: "Boligforening (KAB)",               en: "Housing Corporation (KAB)" },
-  srcHousingCorpDesc:      { da: "Bygningsattributter fra boligforeningens ejendomssystem — areal, enheder, ejerskab", en: "Building attributes from housing corporation property system — area, units, ownership" },
+  srcHousingCorpDesc:      { da: "Interne ejendomsdata — enheder, ejerskab, administration", en: "Internal property data — units, ownership, administration" },
 
   /* ── Consumption comparison (year-over-year) ── */
   compareYears:            { da: "Sammenlign år",                 en: "Compare years" },

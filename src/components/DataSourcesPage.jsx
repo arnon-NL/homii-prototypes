@@ -39,15 +39,11 @@ const fmtDateTime = (iso, lang) => {
   return d.toLocaleDateString(lang === "da" ? "da-DK" : "en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 };
 
-const healthLabel = (score, lang) => {
-  if (score >= 2.5) return t("qualityHigh", lang);
-  if (score >= 1.5) return t("qualityMedium", lang);
-  return t("qualityLow", lang);
-};
+const healthLabel = (pct) => `${Math.round(pct * 100)}%`;
 
-const healthColor = (score) => {
-  if (score >= 2.5) return "#10B981";
-  if (score >= 1.5) return "#F59E0B";
+const healthColor = (pct) => {
+  if (pct >= 0.85) return "#10B981";
+  if (pct >= 0.6)  return "#F59E0B";
   return "#EF4444";
 };
 
@@ -80,7 +76,7 @@ export default function DataSourcesPage() {
   const totalRecords   = enriched.reduce((s, src) => s + (src.records?.total || 0), 0);
   const totalIssues    = enriched.reduce((s, src) => s + (src.records?.issueCount || 0), 0);
   const avgHealth      = totalRecords > 0
-    ? enriched.reduce((s, src) => s + (src.records?.healthScore || 0) * (src.records?.total || 0), 0) / totalRecords
+    ? enriched.reduce((s, src) => s + (src.records?.healthPct || 0) * (src.records?.total || 0), 0) / totalRecords
     : 0;
   const allIssues      = enriched.flatMap(src =>
     (src.records?.issues || []).map(issue => ({ ...issue, sourceId: src.id, sourceNameKey: src.nameKey }))
@@ -115,7 +111,7 @@ export default function DataSourcesPage() {
           <Kpi label={t("totalRecords", lang)}       value={totalRecords} />
           <Kpi label={t("recordsWithIssues", lang)}  value={totalIssues}
                accent={totalIssues > 0 ? "#EF4444" : "#10B981"} />
-          <Kpi label={t("overallHealth", lang)}       value={healthLabel(avgHealth, lang)}
+          <Kpi label={t("overallHealth", lang)}       value={healthLabel(avgHealth)}
                accent={healthColor(avgHealth)} />
         </div>
 

@@ -398,6 +398,17 @@ export const dataSources = [
     lastSync: "2026-02-22T02:00:00Z",
   },
   {
+    id: "bbr",
+    nameKey: "srcBbr",
+    descKey: "srcBbrDesc",
+    category: "building-attributes",
+    entityType: "buildings",
+    syncPattern: "weekly",
+    syncPatternKey: "syncWeekly",
+    status: "connected",
+    lastSync: "2026-02-23T03:00:00Z",
+  },
+  {
     id: "housing-corp",
     nameKey: "srcHousingCorp",
     descKey: "srcHousingCorpDesc",
@@ -424,9 +435,9 @@ export function getDataSourceRecords(sourceId) {
     const list = meters.filter(m => m.dataSource === sourceId);
     const healthy = list.filter(m => m.status === "active");
     const issues = list.filter(m => m.status !== "active");
-    const avgQual = list.length
-      ? list.reduce((s, m) => s + ({ high: 3, medium: 2, low: 1 }[m.dataQuality] || 0), 0) / list.length
-      : 0;
+    // healthPct: proportion of meters rated high or medium quality (0–1)
+    const okCount = list.filter(m => m.dataQuality === "high" || m.dataQuality === "medium").length;
+    const healthPct = list.length ? okCount / list.length : 0;
 
     // Type breakdown (fjernvarme/vand/el)
     const breakdown = {};
@@ -454,7 +465,7 @@ export function getDataSourceRecords(sourceId) {
       total: list.length,
       healthy: healthy.length,
       issueCount: issues.length,
-      healthScore: avgQual,
+      healthPct,
       coverage: { covered: coveredBuildings.size, total: buildings.length },
       breakdown: Object.entries(breakdown).map(([key, count]) => ({ key, count })),
       qualityBreakdown,
@@ -473,8 +484,8 @@ export function getDataSourceRecords(sourceId) {
     const breakdown = {};
     withEpc.forEach(b => { breakdown[b.epc] = (breakdown[b.epc] || 0) + 1; });
 
-    // Quality: proportion still valid
-    const healthScore = withEpc.length ? (healthy.length / withEpc.length) * 3 : 0;
+    // healthPct: proportion of EPCs still valid (0–1)
+    const healthPct = withEpc.length ? healthy.length / withEpc.length : 0;
 
     // Quality breakdown: valid vs expired
     const qualityBreakdown = { high: healthy.length };
@@ -494,7 +505,7 @@ export function getDataSourceRecords(sourceId) {
       total: withEpc.length,
       healthy: healthy.length,
       issueCount: expired.length,
-      healthScore,
+      healthPct,
       coverage: { covered: withEpc.length, total: buildings.length },
       breakdown: Object.entries(breakdown).map(([key, count]) => ({ key, count })),
       qualityBreakdown,
@@ -502,27 +513,29 @@ export function getDataSourceRecords(sourceId) {
     };
   }
 
-  /* ── Housing corporation attributes source ── */
-  if (sourceId === "housing-corp") {
-    // All buildings have attribute data; check completeness
-    const complete = buildings.filter(b => b.units && b.area && b.owner && b.administrator);
-    const incomplete = buildings.filter(b => !b.units || !b.area || !b.owner || !b.administrator);
+  /* ── BBR — public building & dwelling register ── */
+  if (sourceId === "bbr") {
+    // BBR fields: address, yearBuilt, buildingType, area, municipality
+    const bbrFields = b => b.address && b.yearBuilt && b.buildingType && b.area && b.municipality;
+    const complete = buildings.filter(bbrFields);
+    const incomplete = buildings.filter(b => !bbrFields(b));
 
     // Breakdown: by building type
     const breakdown = {};
     buildings.forEach(b => { breakdown[b.buildingType || "Unknown"] = (breakdown[b.buildingType || "Unknown"] || 0) + 1; });
 
-    const healthScore = buildings.length ? (complete.length / buildings.length) * 3 : 0;
+    const healthPct = buildings.length ? complete.length / buildings.length : 0;
+
     const qualityBreakdown = { high: complete.length };
     if (incomplete.length > 0) qualityBreakdown.low = incomplete.length;
 
     const issueDetails = incomplete.map(b => ({
-      recordId: `ATTR-${b.id}`,
+      recordId: `BBR-${b.id}`,
       entityLabel: b.name,
       entityLink: `/buildings/${b.id}`,
       recordLink: `/buildings/${b.id}`,
       status: "warning",
-      detail: { da: "Ufuldstændige bygningsattributter", en: "Incomplete building attributes" },
+      detail: { da: "Ufuldstændige BBR-stamdata", en: "Incomplete BBR master data" },
       lastUpdated: b.bbrLastUpdated || null,
     }));
 
@@ -530,7 +543,45 @@ export function getDataSourceRecords(sourceId) {
       total: buildings.length,
       healthy: complete.length,
       issueCount: incomplete.length,
-      healthScore,
+      healthPct,
+      coverage: { covered: buildings.length, total: buildings.length },
+      breakdown: Object.entries(breakdown).map(([key, count]) => ({ key, count })),
+      qualityBreakdown,
+      issues: issueDetails,
+    };
+  }
+
+  /* ── Housing corporation (KAB) — internal property management data ── */
+  if (sourceId === "housing-corp") {
+    // KAB fields: units, owner, administrator
+    const kabFields = b => b.units && b.owner && b.administrator;
+    const complete = buildings.filter(kabFields);
+    const incomplete = buildings.filter(b => !kabFields(b));
+
+    // Breakdown: by administrator
+    const breakdown = {};
+    buildings.forEach(b => { breakdown[b.administrator || "Unknown"] = (breakdown[b.administrator || "Unknown"] || 0) + 1; });
+
+    const healthPct = buildings.length ? complete.length / buildings.length : 0;
+
+    const qualityBreakdown = { high: complete.length };
+    if (incomplete.length > 0) qualityBreakdown.low = incomplete.length;
+
+    const issueDetails = incomplete.map(b => ({
+      recordId: `KAB-${b.id}`,
+      entityLabel: b.name,
+      entityLink: `/buildings/${b.id}`,
+      recordLink: `/buildings/${b.id}`,
+      status: "warning",
+      detail: { da: "Ufuldstændige ejendomsdata fra boligforening", en: "Incomplete property data from housing corporation" },
+      lastUpdated: null,
+    }));
+
+    return {
+      total: buildings.length,
+      healthy: complete.length,
+      issueCount: incomplete.length,
+      healthPct,
       coverage: { covered: buildings.length, total: buildings.length },
       breakdown: Object.entries(breakdown).map(([key, count]) => ({ key, count })),
       qualityBreakdown,
