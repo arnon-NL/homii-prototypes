@@ -421,6 +421,7 @@ export const dict = {
   epcValid:                { da: "Gyldig",                           en: "Valid" },
   bbrSource:               { da: "Kilde: BBR (Bygnings- og Boligregistret)", en: "Source: BBR (Building and Dwelling Register)" },
   bbrLastUpdated:          { da: "BBR opdateret",                    en: "BBR updated" },
+  bbrLastSynced:           { da: "BBR senest synkroniseret",         en: "BBR last synced" },
   tariffVersion:           { da: "Tarifversion",                     en: "Tariff version" },
   tariffSourceContract:    { da: "Kilde: HOFOR kontraktvilkår",      en: "Source: HOFOR contract terms" },
   tempDataUnavailable:     { da: "Temperaturdata ikke tilgængelig",  en: "Temperature data not available" },

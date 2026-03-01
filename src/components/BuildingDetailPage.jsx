@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Flame, Droplets, Zap, Activity, ArrowRight, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { brand, EPC_COLORS } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
-import { getBuilding, getMetersForBuilding, getSuppliersForBuilding } from "@/lib/mockData";
+import { getBuilding, getMetersForBuilding, getSuppliersForBuilding, dataSources } from "@/lib/mockData";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { AttributePanel, AttrSection, AttrRow, AttrLink } from "@/components/ui/attribute-panel";
 import { InfoTooltip, TimePeriodLabel } from "@/components/ui/info-tooltip";
@@ -213,6 +213,13 @@ export default function BuildingDetailPage() {
               {building.bbrLastUpdated && (
                 <AttrRow label={t("bbrLastUpdated", lang)} value={building.bbrLastUpdated} />
               )}
+              {(() => {
+                const bbrSource = dataSources.find(s => s.id === "bbr");
+                if (!bbrSource?.lastSync) return null;
+                const d = new Date(bbrSource.lastSync);
+                const formatted = d.toLocaleDateString(lang === "da" ? "da-DK" : "en-GB", { day: "numeric", month: "short", year: "numeric" });
+                return <AttrRow label={t("bbrLastSynced", lang)} value={formatted} />;
+              })()}
             </AttrSection>
 
             {/* BBR source note */}
