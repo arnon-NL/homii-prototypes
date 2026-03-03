@@ -30,7 +30,7 @@ function PlaceholderRoute({ pageKey }) {
 }
 
 export default function App() {
-  const [lang, setLang] = useState("da");
+  const [lang, setLang] = useState("en");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 

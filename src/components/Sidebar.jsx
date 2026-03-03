@@ -127,7 +127,7 @@ export default function Sidebar({ lang, onLangChange }) {
         </div>
         <div className="flex items-center gap-1">
           <div className="inline-flex rounded-md overflow-hidden bg-slate-200/60">
-            {["da", "en"].map(l => (
+            {["en", "nl", "da"].map(l => (
               <button key={l} onClick={() => onLangChange(l)}
                 className={`px-2 py-0.5 text-[9px] font-semibold transition-all ${
                   lang === l ? "bg-white text-slate-700 shadow-sm" : "text-slate-400 hover:text-slate-600"
