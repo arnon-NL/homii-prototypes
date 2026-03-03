@@ -70,7 +70,7 @@ export default function Sidebar({ lang, onLangChange }) {
           <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[11px] font-extrabold tracking-wide"
             style={{ background: "#1A3C6E" }}>KAB</div>
           <div className="flex-1 min-w-0">
-            <span className="text-[13px] font-semibold block truncate" style={{ color: brand.navy }}>KAB</span>
+            <span className="text-[13px] font-semibold block truncate" style={{ color: brand.navy }}>V3 TEST</span>
             <div className="flex items-center gap-1 mt-0.5">
               <HomiiIcon size={10} color={brand.blue} />
               <span className="text-[9px] text-slate-400 font-medium">powered by homii</span>
