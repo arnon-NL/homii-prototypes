@@ -98,7 +98,7 @@ export default function MetersPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-mono font-semibold tracking-tight mb-1" style={{ color: brand.navy }}>{m.id}</div>
+                    <div className="text-xs font-mono font-medium mb-1" style={{ color: brand.navy }}>{m.id}</div>
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0" style={{ background: color + "15" }}>
                         <SvcIcon size={12} style={{ color }} />
@@ -151,7 +151,7 @@ export default function MetersPage() {
                     onClick={() => navigate(`/meters/${m.id}`)}
                   >
                     <td className="px-3 sm:px-5 py-3">
-                      <span className="text-[13px] font-mono font-semibold tracking-tight" style={{ color: brand.navy }}>{m.id}</span>
+                      <span className="text-sm font-mono font-medium" style={{ color: brand.navy }}>{m.id}</span>
                     </td>
                     <td className="px-3 sm:px-5 py-3">
                       <div className="flex items-center gap-2">

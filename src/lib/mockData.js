@@ -204,13 +204,14 @@ export function getSupplier(supplierId) {
 /* ─── Afkøling (cooling) time-series per DH meter ─── */
 /* Generates weekly afkøling data for sparklines and aggregation.
    Each data point: { week, afkoeling (kWh/m³), mwh, volume (m³), supply, return } */
-export function getAfkoelingTimeSeries(meterId, weeks = 52) {
+export function getAfkoelingTimeSeries(meterId, weeks = 52, year = 2026) {
   const m = meters.find(x => x.id === meterId);
   if (!m || m.type !== "fjernvarme") return [];
   // No temperature sensors → cannot derive afkøling
   if (!m.hasTemperatureData) return [];
   const seed = meterId.charCodeAt(meterId.length - 1) + meterId.charCodeAt(meterId.length - 3) * 7;
-  const r = (n) => Math.sin(seed * 100 + n * 17) * 0.5 + 0.5;
+  const yearOffset = (year - 2026) * 137; // deterministic offset per year
+  const r = (n) => Math.sin((seed + yearOffset) * 100 + n * 17) * 0.5 + 0.5;
 
   // Building-specific baseline afkøling — newer buildings cool better
   const bldg = buildings.find(b => b.id === m.buildingId);
@@ -219,10 +220,13 @@ export function getAfkoelingTimeSeries(meterId, weeks = 52) {
                : yearBuilt > 1990 ? 29 + r(0) * 5     // Mid: 29-34
                :                     32 + r(0) * 6;    // Old: 32-38
 
+  // Slight improvement trend over years (newer years = slightly better cooling)
+  const yearTrend = (2026 - year) * 0.3;
+
   return Array.from({ length: weeks }, (_, n) => {
     const winterFactor = n < 13 || n > 39 ? 1 : 0.85; // Summer = better cooling
-    const noise = Math.sin(seed * 7 + n * 31) * 2;
-    const afk = +(baseAfk * winterFactor + noise).toFixed(1);
+    const noise = Math.sin((seed + yearOffset) * 7 + n * 31) * 2;
+    const afk = +((baseAfk + yearTrend) * winterFactor + noise).toFixed(1);
     const volume = +(winterFactor * (45 + r(n + 200) * 30)).toFixed(1);
     const mwh = +((volume * afk) / 860).toFixed(2);
     const supply = +(75 + r(n) * 8).toFixed(1);
@@ -232,8 +236,8 @@ export function getAfkoelingTimeSeries(meterId, weeks = 52) {
 }
 
 /* Aggregate weekly series into monthly or yearly for portfolio chart */
-export function getAfkoelingAggregated(meterId, period = "weekly") {
-  const weekly = getAfkoelingTimeSeries(meterId, 52);
+export function getAfkoelingAggregated(meterId, period = "weekly", year = 2026) {
+  const weekly = getAfkoelingTimeSeries(meterId, 52, year);
   if (period === "weekly") return weekly;
   if (period === "monthly") {
     const months = [];
@@ -248,7 +252,7 @@ export function getAfkoelingAggregated(meterId, period = "weekly") {
   }
   // yearly — single point
   const avg = +(weekly.reduce((s, d) => s + d.afkoeling, 0) / weekly.length).toFixed(1);
-  return [{ year: 2026, afkoeling: avg }];
+  return [{ year, afkoeling: avg }];
 }
 
 /* Get all DH meters with their current afkøling summary */

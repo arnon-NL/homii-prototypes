@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 
 import { brand, yearColor, HOFOR, Icon } from "@/lib/brand";
+import { YearPill } from "@/components/ui/year-pill";
 import { useLang, t, MS, ML } from "@/lib/i18n";
 import { meters as allMeters, buildings, getBuilding, suppliers, getDhMetersSummary, getAfkoelingAggregated, getGraddageForMeter, GK, GN, GNT } from "@/lib/mockData";
 
@@ -534,6 +535,7 @@ export function CoolingReport({ navigate }) {
   const [selectedMeter, setSelectedMeter] = useState(null);
   const [period, setPeriod] = useState("weekly");
   const [supplierFilter, setSupplierFilter] = useState("hofor"); // default to HOFOR
+  const [selectedYear, setSelectedYear] = useState(2026);
   const [search, setSearch] = useState("");
   const [tableLimit, setTableLimit] = useState(15);
   const [visibleMeterIds, setVisibleMeterIds] = useState(null); // null = "all" (auto-derived from filtered)
@@ -588,31 +590,35 @@ export function CoolingReport({ navigate }) {
   const deviation = portfolioAvg - thr;
   const correction = deviation * HOFOR.korrektionPct * HOFOR.energiprisPerMWh * annualMWh;
 
-  // Chart data: build aggregated series per meter for the selected period, filtered by visible selection
+  // Chart data: build aggregated series per meter for the selected period & year, filtered by visible selection
   const chartData = useMemo(() => {
     const vis = filtered.filter(m => visibleSet.has(m.meterId));
     if (period === "weekly") {
-      return vis.map(m => ({ ...m }));
+      // For weekly, regenerate series for the selected year
+      return vis.map(m => {
+        const agg = getAfkoelingAggregated(m.meterId, "weekly", selectedYear);
+        return { ...m, series: agg };
+      });
     }
     if (period === "monthly") {
       return vis.map(m => {
-        const agg = getAfkoelingAggregated(m.meterId, "monthly");
+        const agg = getAfkoelingAggregated(m.meterId, "monthly", selectedYear);
         return { ...m, series: agg.map(d => ({ ...d, week: d.month })) };
       });
     }
     // yearly — single data point per meter, bar chart is better
     return vis.map(m => {
-      const agg = getAfkoelingAggregated(m.meterId, "yearly");
+      const agg = getAfkoelingAggregated(m.meterId, "yearly", selectedYear);
       return { ...m, series: agg.map(d => ({ ...d, week: 1 })) };
     });
-  }, [filtered, period, visibleSet]);
+  }, [filtered, period, visibleSet, selectedYear]);
 
   // X-axis config per period
   const xAxisConfig = period === "weekly"
     ? { dataKey: "week", type: "number", domain: [1, 52], tickFormatter: w => `W${w}` }
     : period === "monthly"
     ? { dataKey: "week", type: "number", domain: [1, 12], tickFormatter: m => MS[lang]?.[m - 1] || m }
-    : { dataKey: "week", type: "number", domain: [1, 1], tickFormatter: () => "2026" };
+    : { dataKey: "week", type: "number", domain: [1, 1], tickFormatter: () => `${selectedYear}` };
 
   // Detail mode data
   const detailData = useMemo(() => selectedMeter ? mkCooling(period === "weekly" ? "weekly" : period, selectedMeter, lang) : null, [period, selectedMeter, lang]);
@@ -664,6 +670,16 @@ export function CoolingReport({ navigate }) {
             { value: "yearly", label: t("yearly", lang) },
           ]} />
         </SectionHeader>
+
+        {/* Year selector */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">{t("year", lang)}</span>
+          <div className="flex gap-1">
+            {[2022, 2023, 2024, 2025, 2026].map(y => (
+              <YearPill key={y} year={y} active={selectedYear === y} onClick={() => setSelectedYear(y)} />
+            ))}
+          </div>
+        </div>
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
@@ -746,7 +762,7 @@ export function CoolingReport({ navigate }) {
           ) : (
             /* Yearly view — horizontal bar chart comparing meters (filtered by visible selection) */
             <ResponsiveContainer width="100%" height={Math.max(180, chartData.length * 36 + 40)}>
-              <BarChart data={chartData.map(m => ({ name: m.buildingName, afkoeling: m.avgAfkoeling }))} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 120 }}>
+              <BarChart data={chartData.map(m => ({ name: m.buildingName, afkoeling: m.series?.[0]?.afkoeling ?? m.avgAfkoeling }))} layout="vertical" margin={{ top: 5, right: 30, bottom: 5, left: 120 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 11, fill: brand.muted }} unit=" kWh/m³" axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: brand.navy }} width={110} axisLine={false} tickLine={false} />

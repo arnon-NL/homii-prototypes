@@ -23,6 +23,7 @@ export const dict = {
   weekly:             { da: "Ugentlig",                    en: "Weekly" },
   monthly:            { da: "Månedlig",                    en: "Monthly" },
   yearly:             { da: "Årlig",                       en: "Yearly" },
+  year:               { da: "År",                          en: "Year" },
   yearlyTotal:        { da: "Årlig total",                 en: "Yearly total" },
   coolingTitle:       { da: "Afkøling – Fjernvarme",      en: "Cooling – District Heating" },
   coolingSub:         { da: "Overvåg afkøling per måler eller samlet. Afkøling = MWh/m³ × 860. Gode værdier reducerer HOFORs motivationstarif.",
