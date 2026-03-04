@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 
 import { brand, yearColor, HOFOR, Icon } from "@/lib/brand";
-import { YearPill } from "@/components/ui/year-pill";
 import { useLang, t, MS, ML } from "@/lib/i18n";
 import { meters as allMeters, buildings, getBuilding, suppliers, getDhMetersSummary, getAfkoelingAggregated, getGraddageForMeter, GK, GN, GNT } from "@/lib/mockData";
 
