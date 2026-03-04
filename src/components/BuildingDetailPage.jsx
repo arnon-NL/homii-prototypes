@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Flame, Droplets, Zap, Activity, ArrowRight, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Flame, Droplets, Zap, Activity, ArrowRight, AlertTriangle, CheckCircle2, Radio, FileText, Settings, UserCheck, Bell, Wrench } from "lucide-react";
 import { brand, EPC_COLORS } from "@/lib/brand";
 import { t, useLang } from "@/lib/i18n";
 import { getBuilding, getMetersForBuilding, getSuppliersForBuilding, dataSources } from "@/lib/mockData";
@@ -215,14 +215,36 @@ export default function BuildingDetailPage() {
 
               {/* Activity tab */}
               <TabsContent value="activity">
-                <div className="mt-4 space-y-3">
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50">
-                    <Activity size={14} className="text-slate-400 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: brand.navy }}>{t("yearBuilt", lang)}</p>
-                      <p className="text-xs text-slate-400">{building.yearBuilt}</p>
-                    </div>
-                  </div>
+                <div className="mt-4 space-y-0.5">
+                  {/* Activity timeline — realistic log entries */}
+                  {[
+                    { icon: Radio, color: "#3EB1C8", title: lang === "da" ? "Målerdata synkroniseret" : "Meter data synced", desc: lang === "da" ? "Alle 3 målere modtog data fra Kamstrup READy" : "All 3 meters received data from Kamstrup READy", time: "2026-03-04 08:12", user: "System" },
+                    { icon: Bell, color: "#F59E0B", title: lang === "da" ? "Afkølingsalarm udløst" : "Cooling alarm triggered", desc: lang === "da" ? "KAM-DH-001: Afkøling under 25°C i 3 sammenhængende dage" : "KAM-DH-001: Cooling below 25°C for 3 consecutive days", time: "2026-03-02 14:30", user: "System" },
+                    { icon: FileText, color: "#3B8EA5", title: lang === "da" ? "Energirapport genereret" : "Energy report generated", desc: lang === "da" ? "Månedlig forbrugsrapport for februar 2026" : "Monthly consumption report for February 2026", time: "2026-03-01 06:00", user: "System" },
+                    { icon: UserCheck, color: "#22C55E", title: lang === "da" ? "EPC-certifikat verificeret" : "EPC certificate verified", desc: lang === "da" ? `Energimærke ${building.epc} bekræftet — gyldig til ${building.epcExpiresDate || "N/A"}` : `Energy label ${building.epc} confirmed — valid until ${building.epcExpiresDate || "N/A"}`, time: "2026-02-28 10:45", user: "Arnon K." },
+                    { icon: Settings, color: "#64748B", title: lang === "da" ? "Bygningsdata opdateret fra BBR" : "Building data updated from BBR", desc: lang === "da" ? "Areal, enheder og bygningstype synkroniseret" : "Area, units and building type synced", time: "2026-02-25 09:00", user: "System" },
+                    { icon: Wrench, color: "#EF4444", title: lang === "da" ? "Vandmåler offline i 48 timer" : "Water meter offline for 48 hours", desc: lang === "da" ? "KAM-WA-012: Ingen data modtaget — alarm sendt til driftsteam" : "KAM-WA-012: No data received — alert sent to ops team", time: "2026-02-20 16:15", user: "System" },
+                    { icon: Radio, color: "#3EB1C8", title: lang === "da" ? "Ny måler tilknyttet" : "New meter linked", desc: lang === "da" ? "KAM-EL-034 tilknyttet bygning via Eloverblik" : "KAM-EL-034 linked to building via Eloverblik", time: "2026-02-15 11:30", user: "Arnon K." },
+                    { icon: CheckCircle2, color: "#22C55E", title: lang === "da" ? "Leverandørkontrakt bekræftet" : "Supplier contract confirmed", desc: lang === "da" ? "HOFOR kontrakt 2024–2026 bekræftet og gyldig" : "HOFOR contract 2024–2026 confirmed and valid", time: "2026-01-15 09:00", user: "System" },
+                    { icon: Activity, color: "#94A3B8", title: lang === "da" ? "Bygning onboardet i homii" : "Building onboarded in homii", desc: lang === "da" ? `Oprettet med ${meters.length} målere og BBR-data` : `Created with ${meters.length} meters and BBR data`, time: building.homiiOnboarded || "2024-01-01", user: "System" },
+                  ].map((entry, i) => {
+                    const IconComp = entry.icon;
+                    return (
+                      <div key={i} className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: entry.color + "15" }}>
+                          <IconComp size={13} style={{ color: entry.color }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[13px] font-medium" style={{ color: brand.navy }}>{entry.title}</p>
+                            <span className="text-[10px] text-slate-400 shrink-0 tabular-nums">{entry.time}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 mt-0.5">{entry.desc}</p>
+                          <span className="text-[10px] text-slate-300 mt-0.5 block">{entry.user}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </TabsContent>
             </Tabs>

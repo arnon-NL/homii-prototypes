@@ -20,7 +20,10 @@ export const suppliers = [
     utilityTypes: ["fjernvarme", "vand"],
     contractPeriod: { start: "2024-01-01", end: "2026-12-31" },
     status: "active",
-    activeTariffs: ["Motivationstarif 2026", "Vandafgift 2026"],
+    activeTariffs: [
+      { name: "Motivationstarif 2026", type: "fjernvarme", unit: "DKK/MWh", price: 650, description: { da: "Energipris inkl. motivationstillæg baseret på afkøling", en: "Energy price incl. motivation surcharge based on cooling" } },
+      { name: "Vandafgift 2026", type: "vand", unit: "DKK/m³", price: 45.67, description: { da: "Vandafledningsafgift + statsafgift", en: "Water drainage fee + state levy" } },
+    ],
     address: "Ørestads Boulevard 35, 2300 København S",
   },
   {
@@ -31,7 +34,9 @@ export const suppliers = [
     utilityTypes: ["el"],
     contractPeriod: { start: "2024-07-01", end: "2027-06-30" },
     status: "active",
-    activeTariffs: ["Erhvervstarif C"],
+    activeTariffs: [
+      { name: "Erhvervstarif C", type: "el", unit: "DKK/kWh", price: 2.35, description: { da: "Erhvervstarif for fællesarealer inkl. nettarif + afgifter", en: "Commercial tariff for common areas incl. grid tariff + taxes" } },
+    ],
     address: "Nesa Allé 1, 2820 Gentofte",
   },
   {
@@ -42,7 +47,9 @@ export const suppliers = [
     utilityTypes: ["el", "vand"],
     contractPeriod: { start: "2025-01-01", end: "2027-12-31" },
     status: "active",
-    activeTariffs: ["Flexel 2026"],
+    activeTariffs: [
+      { name: "Flexel 2026", type: "el", unit: "DKK/kWh", price: 2.18, description: { da: "Fleksibel elpris med variabel spotkomponent", en: "Flexible electricity price with variable spot component" } },
+    ],
     address: "Kokbjerg 30, 6000 Kolding",
   },
 ];

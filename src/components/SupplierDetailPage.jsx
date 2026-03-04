@@ -47,7 +47,17 @@ export default function SupplierDetailPage() {
             </div>
             <p className="text-sm text-slate-400">{supplier.address}</p>
             <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1.5 text-xs text-slate-500">
-              <span>{supplier.utilityTypes.map(u => t(u, lang)).join(", ")}</span>
+              <span className="flex items-center gap-1.5">{supplier.utilityTypes.map(u => {
+                const SvcIcon = typeIcons[u];
+                const svcColor = typeColors[u];
+                return (
+                  <span key={u} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                    style={{ backgroundColor: svcColor + "12", color: svcColor }}>
+                    {SvcIcon && <SvcIcon size={9} />}
+                    {t(u, lang)}
+                  </span>
+                );
+              })}</span>
               <span className="w-px h-3 bg-slate-200" />
               <span>{meters.length} {t("meters", lang).toLowerCase()}</span>
               <span className="w-px h-3 bg-slate-200" />
@@ -87,9 +97,19 @@ export default function SupplierDetailPage() {
                     </CardContent></Card>
                     <Card><CardContent className="p-4">
                       <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-2">{t("utilityTypes", lang)}</p>
-                      <span className="text-sm font-medium" style={{ color: brand.navy }}>
-                        {supplier.utilityTypes.map(u => t(u, lang)).join(", ")}
-                      </span>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {supplier.utilityTypes.map(u => {
+                          const SvcIcon = typeIcons[u];
+                          const svcColor = typeColors[u];
+                          return (
+                            <span key={u} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium"
+                              style={{ backgroundColor: svcColor + "15", color: svcColor }}>
+                              {SvcIcon && <SvcIcon size={11} />}
+                              {t(u, lang)}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </CardContent></Card>
                     <Card><CardContent className="p-4">
                       <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-2">{t("contractPeriod", lang)}</p>
@@ -130,21 +150,42 @@ export default function SupplierDetailPage() {
                     <TimePeriodLabel text={t("currentPeriod", lang)} />
                   </div>
                   <div className="space-y-3">
-                    {supplier.activeTariffs.map((tariff, i) => (
-                      <Card key={i}>
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium" style={{ color: brand.navy }}>{tariff}</p>
-                              <p className="text-xs text-slate-400 mt-0.5">
-                                {t("contractPeriod", lang)}: {supplier.contractPeriod.start} — {supplier.contractPeriod.end}
-                              </p>
+                    {supplier.activeTariffs.map((tariff, i) => {
+                      const tariffObj = typeof tariff === "string" ? { name: tariff } : tariff;
+                      const SvcIcon = tariffObj.type ? typeIcons[tariffObj.type] : null;
+                      const svcColor = tariffObj.type ? typeColors[tariffObj.type] : brand.navy;
+                      return (
+                        <Card key={i}>
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                {SvcIcon && (
+                                  <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: svcColor + "15" }}>
+                                    <SvcIcon size={13} style={{ color: svcColor }} />
+                                  </div>
+                                )}
+                                <p className="text-sm font-medium" style={{ color: brand.navy }}>{tariffObj.name}</p>
+                              </div>
+                              <StatusBadge status="active" lang={lang} />
                             </div>
-                            <StatusBadge status="active" lang={lang} />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            {tariffObj.price != null && (
+                              <div className="flex items-baseline gap-2 mb-1.5">
+                                <span className="text-xl font-bold tabular-nums" style={{ color: brand.navy }}>
+                                  {tariffObj.price.toLocaleString("da-DK", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                                <span className="text-xs text-slate-400 font-medium">{tariffObj.unit}</span>
+                              </div>
+                            )}
+                            {tariffObj.description && (
+                              <p className="text-[11px] text-slate-400 mb-1.5">{tariffObj.description[lang] || tariffObj.description.en}</p>
+                            )}
+                            <p className="text-xs text-slate-400">
+                              {t("contractPeriod", lang)}: {supplier.contractPeriod.start} — {supplier.contractPeriod.end}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </div>
               </TabsContent>
@@ -208,8 +249,30 @@ export default function SupplierDetailPage() {
             <AttrSection title={t("supplierDetails", lang)}>
               <AttrRow label={t("contact", lang)} value={supplier.contact} />
               <AttrRow label={t("phone", lang)} value={supplier.phone} />
-              <AttrRow label={t("utilityTypes", lang)} value={supplier.utilityTypes.map(u => t(u, lang)).join(", ")} />
-              <AttrRow label={t("contractPeriod", lang)} value={`${supplier.contractPeriod.start} — ${supplier.contractPeriod.end}`} />
+              {/* Utility types as colored badges */}
+              <div className="flex items-baseline justify-between gap-2 min-h-[22px]">
+                <span className="text-[11px] text-slate-400 shrink-0">{t("utilityTypes", lang)}</span>
+                <div className="flex flex-wrap gap-1 justify-end">
+                  {supplier.utilityTypes.map(u => {
+                    const SvcIcon = typeIcons[u];
+                    const svcColor = typeColors[u];
+                    return (
+                      <span key={u} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                        style={{ backgroundColor: svcColor + "15", color: svcColor }}>
+                        {SvcIcon && <SvcIcon size={10} />}
+                        {t(u, lang)}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Contract period — wrapped for full display */}
+              <div className="flex flex-col gap-0.5 min-h-[22px]">
+                <span className="text-[11px] text-slate-400">{t("contractPeriod", lang)}</span>
+                <span className="text-[12px] font-medium" style={{ color: brand.navy }}>
+                  {supplier.contractPeriod.start} — {supplier.contractPeriod.end}
+                </span>
+              </div>
             </AttrSection>
 
             <AttrLink

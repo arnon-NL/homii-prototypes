@@ -410,9 +410,20 @@ export default function MeterDetailPage() {
   // Degree days monthly for collapsible chart — uses selectedYear
   const degreeDaysMonthly = useMemo(() => {
     if (!isDH || !graddage.data.length) return [];
+    const now = new Date();
+    const currentMonth = now.getMonth(); // 0-indexed
+    const currentYear = now.getFullYear();
     return GK.map((mk, mi) => {
       const row = graddage.data.find(d => d.year === selectedYear && d.monthIdx === mi);
-      return { name: MS[lang][mi], ng: GN[mk], actual: row ? row.degreeDays : 0 };
+      const isForecast = selectedYear > currentYear || (selectedYear === currentYear && mi > currentMonth);
+      return {
+        name: MS[lang][mi],
+        ng: GN[mk],
+        // Split actual vs forecast so they can be styled differently
+        actual: (!isForecast && row) ? row.degreeDays : undefined,
+        forecast: (isForecast && row) ? row.degreeDays : undefined,
+        _isForecast: isForecast,
+      };
     });
   }, [graddage, isDH, lang, selectedYear]);
 
@@ -717,7 +728,7 @@ export default function MeterDetailPage() {
                                     ? <circle key={`dot-${props.index}`} cx={cx} cy={cy} r={2.5} fill="white" stroke={color} strokeWidth={1.5} strokeDasharray="2 1" />
                                     : <circle key={`dot-${props.index}`} cx={cx} cy={cy} r={2.5} fill={color} strokeWidth={0} />;
                                 }}
-                                name={t(meter.type, lang)} />
+                                legendType="none" tooltipType="none" />
                             </>
                           )}
                         </ComposedChart>
@@ -756,7 +767,10 @@ export default function MeterDetailPage() {
                                   <Tooltip content={<BrandTooltip />} />
                                   <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
                                   <Line type="monotone" dataKey="ng" stroke={brand.red} strokeWidth={1.5} strokeDasharray="6 4" dot={false} name={t("normalYear", lang)} />
-                                  <Line type="monotone" dataKey="actual" stroke={brand.blue} strokeWidth={1.5} dot={{ r: 2 }} name={`${t("actual", lang)} ${selectedYear}`} />
+                                  <Line type="monotone" dataKey="actual" stroke={brand.blue} strokeWidth={1.5} dot={{ r: 2 }} name={`${t("actual", lang)} ${selectedYear}`} connectNulls={false} />
+                                  <Line type="monotone" dataKey="forecast" stroke={brand.blue} strokeWidth={1.5} strokeDasharray="6 3"
+                                    dot={{ r: 2, fill: "white", stroke: brand.blue, strokeWidth: 1.5 }}
+                                    name={`${t("forecast", lang)} ${selectedYear}`} connectNulls={false} />
                                 </ComposedChart>
                               </ResponsiveContainer>
                             </div>
